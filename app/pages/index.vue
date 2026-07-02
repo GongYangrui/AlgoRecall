@@ -33,35 +33,37 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
           </div>
         </div>
 
-        <div class="soft-panel rounded-box p-4">
-          <div class="rounded-box bg-base-100 p-5">
-            <div class="mb-5 flex items-center justify-between">
-              <div>
-                <p class="text-sm font-semibold text-base-content/50">今日队列</p>
-                <h2 class="text-2xl font-black">12 道待复习</h2>
-              </div>
-              <div class="radial-progress text-primary" style="--value:72; --size:5rem; --thickness:0.55rem">72%</div>
-            </div>
-            <div class="space-y-3">
-              <div class="rounded-box border border-base-300 bg-base-100 p-4">
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <p class="font-bold">#1 两数之和</p>
-                    <p class="text-sm text-base-content/60">数组 · 哈希表 · 第 3 轮</p>
-                  </div>
-                  <span class="badge badge-success badge-soft">简单</span>
+        <div class="aura aura-rainbow aura-sm hero-preview-aura w-full duration-2000">
+          <div class="soft-panel rounded-box w-full p-4">
+            <div class="rounded-box bg-base-100 p-5">
+              <div class="mb-5 flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-semibold text-base-content/50">今日队列</p>
+                  <h2 class="text-2xl font-black">12 道待复习</h2>
                 </div>
-                <progress class="progress progress-primary mt-4" value="45" max="100" />
+                <div class="radial-progress text-primary" style="--value:72; --size:5rem; --thickness:0.55rem">72%</div>
               </div>
-              <div class="rounded-box border border-base-300 bg-base-100 p-4">
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <p class="font-bold">#42 接雨水</p>
-                    <p class="text-sm text-base-content/60">单调栈 · 双指针 · 明天复习</p>
+              <div class="space-y-3">
+                <div class="rounded-box border border-base-300 bg-base-100 p-4">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <p class="font-bold">#1 两数之和</p>
+                      <p class="text-sm text-base-content/60">数组 · 哈希表 · 第 3 轮</p>
+                    </div>
+                    <span class="badge badge-success badge-soft">简单</span>
                   </div>
-                  <span class="badge badge-error badge-soft">困难</span>
+                  <progress class="progress progress-primary mt-4" value="45" max="100" />
                 </div>
-                <progress class="progress progress-warning mt-4" value="26" max="100" />
+                <div class="rounded-box border border-base-300 bg-base-100 p-4">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <p class="font-bold">#42 接雨水</p>
+                      <p class="text-sm text-base-content/60">单调栈 · 双指针 · 明天复习</p>
+                    </div>
+                    <span class="badge badge-error badge-soft">困难</span>
+                  </div>
+                  <progress class="progress progress-warning mt-4" value="26" max="100" />
+                </div>
               </div>
             </div>
           </div>
@@ -69,26 +71,56 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
       </section>
 
       <section class="grid gap-4 pb-10 md:grid-cols-3">
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body">
-            <CalendarClock class="h-7 w-7 text-primary" />
-            <h2 class="card-title">自动排期</h2>
-            <p class="text-base-content/65">按解题反馈推进下一次复习，不靠手动记日期。</p>
+        <div class="hover-3d w-full">
+          <div class="card h-full bg-base-100 shadow-sm">
+            <div class="card-body">
+              <CalendarClock class="h-7 w-7 text-primary" />
+              <h2 class="card-title">自动排期</h2>
+              <p class="text-base-content/65">按解题反馈推进下一次复习，不靠手动记日期。</p>
+            </div>
           </div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
         </div>
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body">
-            <Search class="h-7 w-7 text-primary" />
-            <h2 class="card-title">本地题库</h2>
-            <p class="text-base-content/65">搜索题号、标题和标签，从 LeetCode 索引快速加入。</p>
+        <div class="hover-3d w-full">
+          <div class="card h-full bg-base-100 shadow-sm">
+            <div class="card-body">
+              <Search class="h-7 w-7 text-primary" />
+              <h2 class="card-title">本地题库</h2>
+              <p class="text-base-content/65">搜索题号、标题和标签，从 LeetCode 索引快速加入。</p>
+            </div>
           </div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
         </div>
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body">
-            <LineChart class="h-7 w-7 text-primary" />
-            <h2 class="card-title">掌握度统计</h2>
-            <p class="text-base-content/65">看清薄弱题、复习分布和已掌握比例。</p>
+        <div class="hover-3d w-full">
+          <div class="card h-full bg-base-100 shadow-sm">
+            <div class="card-body">
+              <LineChart class="h-7 w-7 text-primary" />
+              <h2 class="card-title">掌握度统计</h2>
+              <p class="text-base-content/65">看清薄弱题、复习分布和已掌握比例。</p>
+            </div>
           </div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
         </div>
       </section>
     </div>

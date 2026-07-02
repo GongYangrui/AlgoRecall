@@ -79,6 +79,11 @@ body {
   box-shadow: 0 18px 48px rgb(18 33 44 / 0.08);
 }
 
+.hero-preview-aura {
+  --aura-radius: var(--radius-box);
+  display: block;
+}
+
 .page-enter-active,
 .page-leave-active {
   transition:
@@ -142,6 +147,12 @@ body {
   .review-card-enter-from,
   .review-card-leave-to {
     transform: none;
+  }
+
+  .hero-preview-aura,
+  .hero-preview-aura::before,
+  .hero-preview-aura::after {
+    animation: none;
   }
 }
 
