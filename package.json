@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.22",
+    "@formkit/auto-animate": "^0.9.0",
     "@lucide/vue": "^1.22.0",
     "@tailwindcss/vite": "^4.1.17",
     "@types/markdown-it": "^14.1.2",

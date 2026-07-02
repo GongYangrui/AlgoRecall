@@ -90,7 +90,7 @@ function jumpToPage() {
         <h1 class="text-3xl font-black md:text-4xl">题库</h1>
         <p class="mt-2 text-base-content/65">搜索、筛选和导入你要长期复习的题。</p>
       </div>
-      <div class="stats bg-base-100 shadow-sm">
+      <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
         <div class="stat py-3">
           <div class="stat-title">当前结果</div>
           <div class="stat-value metric-number text-primary">{{ data?.total || 0 }}</div>
@@ -120,14 +120,15 @@ function jumpToPage() {
           </select>
         </div>
 
-        <div v-if="pending" class="grid min-h-80 place-items-center">
-          <span class="loading loading-spinner loading-lg text-primary" />
-        </div>
-        <div v-else-if="!data?.items.length" class="rounded-box border border-dashed border-base-300 p-10 text-center">
-          <h2 class="text-xl font-black">没有匹配题目</h2>
-          <p class="mt-2 text-base-content/60">换个关键词，或从右侧 LeetCode 索引导入。</p>
-        </div>
-        <div v-else>
+        <div v-auto-animate>
+          <div v-if="pending" class="grid min-h-80 place-items-center">
+            <span class="loading loading-spinner loading-lg text-primary" />
+          </div>
+          <div v-else-if="!data?.items.length" class="rounded-box border border-dashed border-base-300 p-10 text-center">
+            <h2 class="text-xl font-black">没有匹配题目</h2>
+            <p class="mt-2 text-base-content/60">换个关键词，或从右侧 LeetCode 索引导入。</p>
+          </div>
+          <div v-else>
           <div class="overflow-x-auto">
             <table class="table table-zebra table-sm min-w-[900px] table-fixed">
               <colgroup>
@@ -144,8 +145,8 @@ function jumpToPage() {
                   <th></th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="problem in data.items" :key="problem.id">
+              <tbody v-auto-animate>
+                <tr v-for="problem in data.items" :key="problem.id" class="transition duration-150 ease-out">
                   <td>
                     <div class="flex min-w-0 items-center gap-3">
                       <div
@@ -155,7 +156,7 @@ function jumpToPage() {
                         {{ displayProblemNumber(problem) }}
                       </div>
                       <div class="min-w-0 flex-1">
-                        <NuxtLink class="block truncate font-bold leading-6 hover:link" :to="`/problems/${problem.id}`" :title="fullProblemTitle(problem)">
+                        <NuxtLink class="block truncate font-bold leading-6 transition duration-150 ease-out hover:link" :to="`/problems/${problem.id}`" :title="fullProblemTitle(problem)">
                           {{ displayProblemTitle(problem) }}
                         </NuxtLink>
                         <div class="truncate text-sm text-base-content/55" :title="problem.title">
@@ -172,22 +173,22 @@ function jumpToPage() {
                   <td class="align-middle"><ProblemBadges :difficulty="problem.difficulty" :status="problem.status" /></td>
                   <td class="align-middle text-sm text-base-content/60">{{ problem.nextReviewAt || "无需排期" }}</td>
                   <th class="text-center align-middle">
-                    <NuxtLink class="btn btn-ghost btn-xs" :to="`/problems/${problem.id}`">查看</NuxtLink>
+                    <NuxtLink class="btn btn-ghost btn-xs transition duration-150 ease-out active:scale-[0.96]" :to="`/problems/${problem.id}`">查看</NuxtLink>
                   </th>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <div class="mt-4 flex flex-col items-center justify-between gap-3 lg:flex-row">
+          <div v-auto-animate class="mt-4 flex flex-col items-center justify-between gap-3 lg:flex-row">
             <p class="text-sm text-base-content/60">显示 {{ currentStart }}-{{ currentEnd }} / 共 {{ data.total }} 题</p>
             <div class="flex flex-col items-center gap-2 sm:flex-row">
               <div class="join">
-                <button class="btn join-item btn-sm" type="button" :disabled="page <= 1 || pending" @click="previousPage">上一页</button>
+                <button class="btn join-item btn-sm transition duration-150 ease-out active:scale-[0.98]" type="button" :disabled="page <= 1 || pending" @click="previousPage">上一页</button>
                 <button
                   v-for="pageNumber in visiblePages"
                   :key="pageNumber"
-                  class="btn join-item btn-sm"
+                  class="btn join-item btn-sm transition duration-150 ease-out active:scale-[0.98]"
                   :class="pageNumber === page ? 'btn-primary' : 'btn-ghost'"
                   type="button"
                   :disabled="pending"
@@ -195,7 +196,7 @@ function jumpToPage() {
                 >
                   {{ pageNumber }}
                 </button>
-                <button class="btn join-item btn-sm" type="button" :disabled="page >= totalPages || pending" @click="nextPage">下一页</button>
+                <button class="btn join-item btn-sm transition duration-150 ease-out active:scale-[0.98]" type="button" :disabled="page >= totalPages || pending" @click="nextPage">下一页</button>
               </div>
 
               <form class="join" @submit.prevent="jumpToPage">
@@ -213,9 +214,10 @@ function jumpToPage() {
                     @blur="jumpToPage"
                   />
                 </label>
-                <button class="btn join-item btn-sm" type="submit" :disabled="pending">跳转</button>
+                <button class="btn join-item btn-sm transition duration-150 ease-out active:scale-[0.98]" type="submit" :disabled="pending">跳转</button>
               </form>
             </div>
+          </div>
           </div>
         </div>
       </div>

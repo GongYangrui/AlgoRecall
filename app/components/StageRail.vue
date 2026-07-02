@@ -14,7 +14,7 @@ const activeStage = computed(() => (props.status === "mastered" ? REVIEW_INTERVA
     <span
       v-for="(_, index) in REVIEW_INTERVALS"
       :key="index"
-      class="h-2.5 flex-1 rounded-full"
+      class="h-2.5 flex-1 rounded-full transition-colors duration-150 ease-out"
       :class="index < activeStage ? 'bg-primary' : 'bg-base-300'"
     />
   </div>

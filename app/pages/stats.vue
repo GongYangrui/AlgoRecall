@@ -266,31 +266,32 @@ const weakTagsOption = computed<Record<string, unknown>>(() => {
       </div>
     </div>
 
-    <div v-if="pending" class="grid min-h-96 place-items-center">
-      <span class="loading loading-spinner loading-lg text-primary" />
-    </div>
+    <div v-auto-animate>
+      <div v-if="pending" class="grid min-h-96 place-items-center">
+        <span class="loading loading-spinner loading-lg text-primary" />
+      </div>
 
-    <div v-else-if="data" class="space-y-5">
-      <div class="grid gap-3 md:grid-cols-4">
-        <div class="stats bg-base-100 shadow-sm">
+      <div v-else-if="data" class="space-y-5">
+      <div v-auto-animate class="grid gap-3 md:grid-cols-4">
+        <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
           <div class="stat">
             <div class="stat-title">全部题目</div>
             <div class="stat-value metric-number">{{ data.total }}</div>
           </div>
         </div>
-        <div class="stats bg-base-100 shadow-sm">
+        <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
           <div class="stat">
             <div class="stat-title">待复习</div>
             <div class="stat-value metric-number text-primary">{{ data.due }}</div>
           </div>
         </div>
-        <div class="stats bg-base-100 shadow-sm">
+        <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
           <div class="stat">
             <div class="stat-title">已掌握</div>
             <div class="stat-value metric-number text-success">{{ data.mastered }}</div>
           </div>
         </div>
-        <div class="stats bg-base-100 shadow-sm">
+        <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
           <div class="stat">
             <div class="stat-title">掌握率</div>
             <div class="stat-value metric-number text-secondary">{{ data.masteryRate }}%</div>
@@ -311,7 +312,7 @@ const weakTagsOption = computed<Record<string, unknown>>(() => {
         </div>
       </section>
 
-      <div class="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+      <div v-auto-animate class="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
         <section class="card bg-base-100 shadow-sm">
           <div class="card-body">
             <div class="flex flex-col justify-between gap-2 md:flex-row md:items-start">
@@ -341,6 +342,7 @@ const weakTagsOption = computed<Record<string, unknown>>(() => {
           <StatsChart :option="weakTagsOption" :empty="!hasWeakTags" empty-text="暂时没有明显薄弱标签" height-class="h-80" />
         </div>
       </section>
+      </div>
     </div>
   </AppFrame>
 </template>

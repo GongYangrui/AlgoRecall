@@ -113,20 +113,20 @@ function reviewButtonClass(result: ReviewResult) {
       <NuxtLink to="/problems" class="btn btn-outline">打开题库</NuxtLink>
     </div>
 
-    <div class="mb-5 grid gap-3 md:grid-cols-3">
-      <div class="stats bg-base-100 shadow-sm">
+    <div v-auto-animate class="mb-5 grid gap-3 md:grid-cols-3">
+      <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
         <div class="stat">
           <div class="stat-title">待复习</div>
           <div class="stat-value metric-number text-primary">{{ dueProblems.length }}</div>
         </div>
       </div>
-      <div class="stats bg-base-100 shadow-sm">
+      <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
         <div class="stat">
           <div class="stat-title">题库总数</div>
           <div class="stat-value metric-number">{{ data?.total || 0 }}</div>
         </div>
       </div>
-      <div class="stats bg-base-100 shadow-sm">
+      <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
         <div class="stat">
           <div class="stat-title">已掌握</div>
           <div class="stat-value metric-number text-success">
@@ -136,21 +136,22 @@ function reviewButtonClass(result: ReviewResult) {
       </div>
     </div>
 
-    <div v-if="pending" class="grid min-h-80 place-items-center">
-      <span class="loading loading-spinner loading-lg text-primary" />
-    </div>
+    <div v-auto-animate>
+      <div v-if="pending" class="grid min-h-80 place-items-center">
+        <span class="loading loading-spinner loading-lg text-primary" />
+      </div>
 
-    <div v-else-if="dueProblems.length === 0" class="hero min-h-96 rounded-box bg-base-100">
-      <div class="hero-content text-center">
-        <div>
-          <h2 class="text-3xl font-black">今天清空了</h2>
-          <p class="mt-3 text-base-content/65">可以去题库添加新题，或看看统计里的薄弱项。</p>
-          <NuxtLink to="/problems" class="btn btn-primary mt-6">管理题库</NuxtLink>
+      <div v-else-if="dueProblems.length === 0" class="hero min-h-96 rounded-box bg-base-100">
+        <div class="hero-content text-center">
+          <div>
+            <h2 class="text-3xl font-black">今天清空了</h2>
+            <p class="mt-3 text-base-content/65">可以去题库添加新题，或看看统计里的薄弱项。</p>
+            <NuxtLink to="/problems" class="btn btn-primary mt-6 transition duration-150 ease-out active:scale-[0.98]">管理题库</NuxtLink>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div v-else class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
+      <div v-else class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body p-0">
           <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
@@ -173,11 +174,11 @@ function reviewButtonClass(result: ReviewResult) {
                   <th></th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody v-auto-animate>
                 <tr
                   v-for="problem in dueProblems"
                   :key="problem.id"
-                  class="cursor-pointer border-l-4 border-l-transparent hover:bg-base-200/70"
+                  class="cursor-pointer border-l-4 border-l-transparent transition duration-150 ease-out hover:bg-base-200/70"
                   :class="{ 'border-l-primary bg-base-200': currentProblem?.id === problem.id }"
                   @click="selectedId = problem.id"
                 >
@@ -214,7 +215,7 @@ function reviewButtonClass(result: ReviewResult) {
                     </div>
                   </td>
                   <th>
-                    <button class="btn btn-ghost btn-xs" type="button" @click.stop="selectedId = problem.id">查看</button>
+                    <button class="btn btn-ghost btn-xs transition duration-150 ease-out active:scale-[0.96]" type="button" @click.stop="selectedId = problem.id">查看</button>
                   </th>
                 </tr>
               </tbody>
@@ -225,49 +226,53 @@ function reviewButtonClass(result: ReviewResult) {
 
       <aside class="card h-fit bg-base-100 shadow-sm xl:sticky xl:top-24">
         <div class="card-body">
-          <template v-if="currentProblem">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="font-mono text-sm text-base-content/50">{{ displayProblemNumber(currentProblem) }}</p>
-                <h2 class="mt-1 text-2xl font-black leading-tight">{{ displayProblemTitle(currentProblem) }}</h2>
+          <div class="review-card-shell">
+            <Transition name="review-card" mode="out-in">
+              <div v-if="currentProblem" :key="currentProblem.id" class="review-card-panel grid gap-5">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-mono text-sm text-base-content/50">{{ displayProblemNumber(currentProblem) }}</p>
+                    <h2 class="mt-1 text-2xl font-black leading-tight">{{ displayProblemTitle(currentProblem) }}</h2>
+                  </div>
+                  <ProblemBadges :difficulty="currentProblem.difficulty" />
+                </div>
+
+                <StageRail :stage="currentProblem.stage" :status="currentProblem.status" />
+
+                <div class="flex flex-wrap gap-2">
+                  <a v-if="currentProblem.urlCn" class="btn btn-outline btn-sm transition duration-150 ease-out active:scale-[0.98]" :href="currentProblem.urlCn" target="_blank" rel="noreferrer">
+                    <ExternalLink class="h-4 w-4" />
+                    中文站
+                  </a>
+                  <a v-if="currentProblem.urlEn" class="btn btn-outline btn-sm transition duration-150 ease-out active:scale-[0.98]" :href="currentProblem.urlEn" target="_blank" rel="noreferrer">
+                    <ExternalLink class="h-4 w-4" />
+                    英文站
+                  </a>
+                  <NuxtLink class="btn btn-outline btn-sm transition duration-150 ease-out active:scale-[0.98]" :to="`/problems/${currentProblem.id}`">详情</NuxtLink>
+                </div>
+
+                <div v-auto-animate class="grid gap-2">
+                  <button
+                    v-for="result in reviewResults"
+                    :key="result"
+                    class="btn btn-soft transition duration-150 ease-out active:scale-[0.98]"
+                    :class="reviewButtonClass(result)"
+                    type="button"
+                    :disabled="Boolean(submitting)"
+                    @click="openReviewNote(currentProblem, result)"
+                  >
+                    <Loader2 v-if="submitting === result" class="h-4 w-4 animate-spin" />
+                    {{ resultLabel(result) }}
+                  </button>
+                </div>
               </div>
-              <ProblemBadges :difficulty="currentProblem.difficulty" />
-            </div>
-
-            <StageRail :stage="currentProblem.stage" :status="currentProblem.status" />
-
-            <div class="flex flex-wrap gap-2">
-              <a v-if="currentProblem.urlCn" class="btn btn-outline btn-sm" :href="currentProblem.urlCn" target="_blank" rel="noreferrer">
-                <ExternalLink class="h-4 w-4" />
-                中文站
-              </a>
-              <a v-if="currentProblem.urlEn" class="btn btn-outline btn-sm" :href="currentProblem.urlEn" target="_blank" rel="noreferrer">
-                <ExternalLink class="h-4 w-4" />
-                英文站
-              </a>
-              <NuxtLink class="btn btn-outline btn-sm" :to="`/problems/${currentProblem.id}`">详情</NuxtLink>
-            </div>
-
-            <div class="grid gap-2">
-              <button
-                v-for="result in reviewResults"
-                :key="result"
-                class="btn btn-soft"
-                :class="reviewButtonClass(result)"
-                type="button"
-                :disabled="Boolean(submitting)"
-                @click="openReviewNote(currentProblem, result)"
-              >
-                <Loader2 v-if="submitting === result" class="h-4 w-4 animate-spin" />
-                {{ resultLabel(result) }}
-              </button>
-            </div>
-          </template>
+            </Transition>
+          </div>
         </div>
       </aside>
 
       <div class="modal modal-middle" :class="{ 'modal-open': reviewModalOpen }" role="dialog" aria-modal="true">
-        <div class="modal-box">
+        <div v-auto-animate class="modal-box">
           <h2 class="text-xl font-black">记录：{{ selectedResult ? resultLabel(selectedResult) : "本次复习" }}</h2>
           <p v-if="selectedReviewProblem" class="mt-2 text-sm text-base-content/55">
             {{ displayProblemNumber(selectedReviewProblem) }} {{ displayProblemTitle(selectedReviewProblem) }}
@@ -286,8 +291,8 @@ function reviewButtonClass(result: ReviewResult) {
             <div class="flex items-center justify-between gap-3">
               <span class="text-sm text-base-content/45">{{ reviewNote.length }}/{{ REVIEW_NOTE_MAX_LENGTH }}</span>
               <div class="modal-action mt-0">
-                <button class="btn btn-ghost" type="button" :disabled="Boolean(submitting)" @click="closeReviewNote">取消</button>
-                <button class="btn btn-primary" type="submit" :disabled="Boolean(submitting)">
+                <button class="btn btn-ghost transition duration-150 ease-out active:scale-[0.98]" type="button" :disabled="Boolean(submitting)" @click="closeReviewNote">取消</button>
+                <button class="btn btn-primary transition duration-150 ease-out active:scale-[0.98]" type="submit" :disabled="Boolean(submitting)">
                   <Loader2 v-if="submitting" class="h-4 w-4 animate-spin" />
                   提交
                 </button>
@@ -297,6 +302,7 @@ function reviewButtonClass(result: ReviewResult) {
         </div>
         <button class="modal-backdrop" type="button" :disabled="Boolean(submitting)" @click="closeReviewNote">关闭</button>
       </div>
+    </div>
     </div>
   </AppFrame>
 </template>

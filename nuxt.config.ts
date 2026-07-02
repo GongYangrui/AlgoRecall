@@ -4,6 +4,12 @@ import { fileURLToPath } from "node:url";
 export default defineNuxtConfig({
   compatibilityDate: "2026-07-01",
   devtools: { enabled: true },
+  app: {
+    pageTransition: {
+      name: "page",
+      mode: "out-in",
+    },
+  },
   css: ["~/assets/css/main.css"],
   modules: [],
   vite: {

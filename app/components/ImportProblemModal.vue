@@ -133,93 +133,105 @@ function fullQuestionTitle(question: LeetcodeQuestion) {
             <Search class="h-4 w-4 text-base-content/45" />
             <input v-model="importQuery" type="search" class="grow" placeholder="1、两数之和、reverse integer、滑动窗口" />
           </label>
-          <button class="btn btn-primary join-item min-w-24" type="submit" :disabled="importLoading">
+          <button class="btn btn-primary join-item min-w-24 transition duration-150 ease-out active:scale-[0.98]" type="submit" :disabled="importLoading">
             <Loader2 v-if="importLoading" class="h-4 w-4 animate-spin" />
             搜索
           </button>
         </form>
 
-        <div v-if="importError" class="alert alert-error alert-soft mt-4">
-          <span>{{ importError }}</span>
-        </div>
+        <div v-auto-animate>
+          <div v-if="importError" class="alert alert-error alert-soft mt-4">
+            <span>{{ importError }}</span>
+          </div>
 
-        <div v-else-if="importSuccess" class="alert alert-success alert-soft mt-4">
-          <span>{{ importSuccess }}</span>
-        </div>
+          <div v-else-if="importSuccess" class="alert alert-success alert-soft mt-4">
+            <span>{{ importSuccess }}</span>
+          </div>
 
-        <div v-if="importLoading" class="grid min-h-72 place-items-center">
-          <span class="loading loading-spinner loading-lg text-primary" />
-        </div>
+          <div v-if="importLoading" class="grid min-h-72 place-items-center">
+            <span class="loading loading-spinner loading-lg text-primary" />
+          </div>
 
-        <div v-else-if="!searched" class="rounded-box mt-5 border border-dashed border-base-300 p-10 text-center text-base-content/60">
-          输入题号、标题或标签开始搜索。
-        </div>
+          <div v-else-if="!searched" class="rounded-box mt-5 border border-dashed border-base-300 p-10 text-center text-base-content/60">
+            输入题号、标题或标签开始搜索。
+          </div>
 
-        <div v-else-if="results.length === 0" class="rounded-box mt-5 border border-dashed border-base-300 p-10 text-center">
-          <h3 class="text-lg font-black">没有可导入的结果</h3>
-          <p class="mt-2 text-sm text-base-content/60">换个关键词试试；如果刚刚加入了题目，当前结果可能已经清空。</p>
-        </div>
+          <div v-else-if="results.length === 0" class="rounded-box mt-5 border border-dashed border-base-300 p-10 text-center">
+            <h3 class="text-lg font-black">没有可导入的结果</h3>
+            <p class="mt-2 text-sm text-base-content/60">换个关键词试试；如果刚刚加入了题目，当前结果可能已经清空。</p>
+          </div>
 
-        <div v-else class="mt-5 overflow-x-auto">
-          <table class="table table-zebra table-sm min-w-[760px] table-fixed">
-            <colgroup>
-              <col class="w-[58%]" />
-              <col class="w-36" />
-              <col class="w-28" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>题目</th>
-                <th>难度</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="question in results" :key="question.questionFrontendId">
-                <td>
-                  <div class="flex min-w-0 items-center gap-3">
-                    <div
-                      class="grid h-12 w-12 shrink-0 place-items-center rounded-box border border-base-300 bg-base-200 font-mono text-sm font-bold text-base-content/70"
-                      aria-hidden="true"
+          <div v-else class="mt-5 overflow-x-auto">
+            <table class="table table-zebra table-sm min-w-[760px] table-fixed">
+              <colgroup>
+                <col class="w-[58%]" />
+                <col class="w-36" />
+                <col class="w-28" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>题目</th>
+                  <th>难度</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody v-auto-animate>
+                <tr v-for="question in results" :key="question.questionFrontendId" class="transition duration-150 ease-out">
+                  <td>
+                    <div class="flex min-w-0 items-center gap-3">
+                      <div
+                        class="grid h-12 w-12 shrink-0 place-items-center rounded-box border border-base-300 bg-base-200 font-mono text-sm font-bold text-base-content/70"
+                        aria-hidden="true"
+                      >
+                        #{{ question.questionFrontendId }}
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <div class="truncate font-bold leading-6" :title="fullQuestionTitle(question)">
+                          {{ displayQuestionTitle(question) }}
+                        </div>
+                        <div class="truncate text-sm text-base-content/55" :title="question.title">
+                          {{ question.title }}
+                        </div>
+                        <div class="mt-1 flex min-w-0 flex-wrap gap-1">
+                          <span v-for="tag in displayProblemTags(question).slice(0, 4)" :key="tag" class="badge badge-ghost badge-sm">
+                            {{ tag }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <ProblemBadges :difficulty="question.difficulty" />
+                  </td>
+                  <th>
+                    <NuxtLink
+                      v-if="question.imported && question.problemId"
+                      class="btn btn-success btn-soft btn-sm transition duration-150 ease-out active:scale-[0.98]"
+                      :to="`/problems/${question.problemId}`"
                     >
-                      #{{ question.questionFrontendId }}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="truncate font-bold leading-6" :title="fullQuestionTitle(question)">
-                        {{ displayQuestionTitle(question) }}
-                      </div>
-                      <div class="truncate text-sm text-base-content/55" :title="question.title">
-                        {{ question.title }}
-                      </div>
-                      <div class="mt-1 flex min-w-0 flex-wrap gap-1">
-                        <span v-for="tag in displayProblemTags(question).slice(0, 4)" :key="tag" class="badge badge-ghost badge-sm">
-                          {{ tag }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <ProblemBadges :difficulty="question.difficulty" />
-                </td>
-                <th>
-                  <NuxtLink v-if="question.imported && question.problemId" class="btn btn-success btn-soft btn-sm" :to="`/problems/${question.problemId}`">
-                    <Check class="h-4 w-4" />
-                    查看
-                  </NuxtLink>
-                  <button v-else-if="question.imported" class="btn btn-success btn-soft btn-sm" type="button" disabled>
-                    <Check class="h-4 w-4" />
-                    已加入
-                  </button>
-                  <button v-else class="btn btn-primary btn-soft btn-sm" type="button" :disabled="isQuestionImporting(question.questionFrontendId)" @click="importQuestion(question)">
-                    <Loader2 v-if="isQuestionImporting(question.questionFrontendId)" class="h-4 w-4 animate-spin" />
-                    <Plus v-else class="h-4 w-4" />
-                    {{ isQuestionImporting(question.questionFrontendId) ? "加入中" : "加入" }}
-                  </button>
-                </th>
-              </tr>
-            </tbody>
-          </table>
+                      <Check class="h-4 w-4" />
+                      查看
+                    </NuxtLink>
+                    <button v-else-if="question.imported" class="btn btn-success btn-soft btn-sm" type="button" disabled>
+                      <Check class="h-4 w-4" />
+                      已加入
+                    </button>
+                    <button
+                      v-else
+                      class="btn btn-primary btn-soft btn-sm transition duration-150 ease-out active:scale-[0.98]"
+                      type="button"
+                      :disabled="isQuestionImporting(question.questionFrontendId)"
+                      @click="importQuestion(question)"
+                    >
+                      <Loader2 v-if="isQuestionImporting(question.questionFrontendId)" class="h-4 w-4 animate-spin" />
+                      <Plus v-else class="h-4 w-4" />
+                      {{ isQuestionImporting(question.questionFrontendId) ? "加入中" : "加入" }}
+                    </button>
+                  </th>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
