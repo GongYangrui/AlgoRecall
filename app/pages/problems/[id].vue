@@ -1,0 +1,259 @@
+<script setup lang="ts">
+import { ExternalLink, Loader2, Trash2 } from "@lucide/vue";
+import { renderReviewMarkdown } from "@shared/markdown";
+import { displayProblemNumber, displayProblemTags, displayProblemTitle, resultLabel } from "@shared/problems";
+import { REVIEW_NOTE_MAX_LENGTH } from "@shared/reviews";
+import type { Problem, Review, ReviewResult } from "@shared/types";
+
+definePageMeta({ middleware: "auth" });
+
+const route = useRoute();
+const id = computed(() => String(route.params.id));
+const reviewResults: ReviewResult[] = ["easy", "hard", "solution", "mastered"];
+const reviewing = ref<ReviewResult | "">("");
+const selectedResult = ref<ReviewResult | null>(null);
+const reviewNote = ref("");
+const reviewModalOpen = ref(false);
+const deleting = ref(false);
+const requestFetch = useRequestFetch();
+
+const { data, pending, refresh } = await useAsyncData(`problem-${id.value}`, () =>
+  requestFetch<{ problem: Problem; history: Review[] }>(`/api/problems/${id.value}`),
+);
+
+const notedReviews = computed(() => data.value?.history.filter((review) => review.note?.trim()) || []);
+
+function shouldShowEnglishTitle(problem: Problem) {
+  return displayProblemTitle(problem) !== problem.title;
+}
+
+function reviewButtonClass(result: ReviewResult) {
+  const classes: Record<ReviewResult, string> = {
+    easy: "btn-primary",
+    hard: "btn-error",
+    solution: "btn-info",
+    mastered: "btn-success",
+  };
+  return classes[result];
+}
+
+function reviewNotePlaceholder(result: ReviewResult | null) {
+  const placeholders: Record<ReviewResult, string> = {
+    easy: "这次记住了状态转移",
+    hard: "忘了双指针收缩条件",
+    solution: "边界没处理好，题解用了单调栈",
+    mastered: "模板已经熟了，下次可快速过一遍",
+  };
+  return result ? placeholders[result] : "记录这次刷题的收获";
+}
+
+function openReviewNote(result: ReviewResult) {
+  selectedResult.value = result;
+  reviewNote.value = "";
+  reviewModalOpen.value = true;
+}
+
+function closeReviewNote() {
+  if (reviewing.value) return;
+  reviewModalOpen.value = false;
+  selectedResult.value = null;
+  reviewNote.value = "";
+}
+
+async function submitReview() {
+  if (!data.value?.problem || !selectedResult.value) return;
+  const result = selectedResult.value;
+  reviewing.value = result;
+  try {
+    await $fetch("/api/reviews", {
+      method: "POST",
+      body: { problemId: data.value.problem.id, result, note: reviewNote.value },
+    });
+    reviewModalOpen.value = false;
+    selectedResult.value = null;
+    reviewNote.value = "";
+    await refresh();
+  } finally {
+    reviewing.value = "";
+  }
+}
+
+async function deleteProblem() {
+  if (!data.value?.problem || !confirm("删除这道题和全部复习记录？")) return;
+  deleting.value = true;
+  try {
+    await $fetch(`/api/problems/${id.value}`, { method: "DELETE" });
+    await navigateTo("/problems");
+  } finally {
+    deleting.value = false;
+  }
+}
+</script>
+
+<template>
+  <AppFrame>
+    <div v-if="pending" class="grid min-h-96 place-items-center">
+      <span class="loading loading-spinner loading-lg text-primary" />
+    </div>
+
+    <div v-else-if="data?.problem" class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <section class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-5">
+          <div class="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+            <div>
+              <p class="font-mono text-sm text-base-content/50">{{ displayProblemNumber(data.problem) }}</p>
+              <h1 class="mt-2 text-3xl font-black leading-tight md:text-4xl">{{ displayProblemTitle(data.problem) }}</h1>
+              <p v-if="shouldShowEnglishTitle(data.problem)" class="mt-2 text-base font-semibold text-base-content/55 md:text-lg">
+                {{ data.problem.title }}
+              </p>
+              <div class="mt-3">
+                <ProblemBadges :difficulty="data.problem.difficulty" :status="data.problem.status" />
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a v-if="data.problem.urlCn" class="btn btn-outline btn-sm" :href="data.problem.urlCn" target="_blank" rel="noreferrer">
+                <ExternalLink class="h-4 w-4" />
+                中文站
+              </a>
+              <a v-if="data.problem.urlEn" class="btn btn-outline btn-sm" :href="data.problem.urlEn" target="_blank" rel="noreferrer">
+                <ExternalLink class="h-4 w-4" />
+                英文站
+              </a>
+            </div>
+          </div>
+
+          <div class="rounded-box bg-base-200 p-4">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="font-bold">记忆轨道</span>
+              <span class="text-sm text-base-content/60">第 {{ data.problem.stage }} 阶段</span>
+            </div>
+            <StageRail :stage="data.problem.stage" :status="data.problem.status" />
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-3">
+            <div class="stat rounded-box bg-base-200">
+              <div class="stat-title">复习次数</div>
+              <div class="stat-value metric-number">{{ data.problem.reviewCount }}</div>
+            </div>
+            <div class="stat rounded-box bg-base-200">
+              <div class="stat-title">卡住次数</div>
+              <div class="stat-value metric-number text-warning">{{ data.problem.wrongCount }}</div>
+            </div>
+            <div class="stat rounded-box bg-base-200">
+              <div class="stat-title">下次复习</div>
+              <div class="stat-value text-xl">{{ data.problem.nextReviewAt || "无需排期" }}</div>
+            </div>
+          </div>
+
+          <div>
+            <h2 class="mb-2 font-black">标签</h2>
+            <div v-if="displayProblemTags(data.problem).length > 0" class="flex flex-wrap gap-2">
+              <span v-for="tag in displayProblemTags(data.problem)" :key="tag" class="badge badge-ghost">{{ tag }}</span>
+            </div>
+            <p v-else class="text-sm text-base-content/55">暂无标签</p>
+          </div>
+
+          <div>
+            <h2 class="mb-3 font-black">复习收获</h2>
+            <div v-if="notedReviews.length === 0" class="rounded-box border border-dashed border-base-300 p-6 text-center text-base-content/60">
+              还没有记录收获。
+            </div>
+            <div v-else class="space-y-3">
+              <article v-for="review in notedReviews" :key="review.id" class="rounded-box border border-base-300 bg-base-200/45 p-4">
+                <div class="mb-2 flex flex-wrap items-center gap-2 text-sm">
+                  <span class="badge badge-soft">{{ resultLabel(review.result) }}</span>
+                  <span class="text-base-content/50">{{ review.reviewedAt }}</span>
+                </div>
+                <div class="review-markdown text-base-content/80" v-html="renderReviewMarkdown(review.note)" />
+              </article>
+            </div>
+          </div>
+
+          <div>
+            <h2 class="mb-3 font-black">复习历史</h2>
+            <div v-if="data.history.length === 0" class="rounded-box border border-dashed border-base-300 p-6 text-center text-base-content/60">
+              还没有复习记录。
+            </div>
+            <div v-else class="overflow-x-auto">
+              <table class="table table-zebra">
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>结果</th>
+                    <th>阶段</th>
+                    <th>下次</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="review in data.history" :key="review.id">
+                    <td>{{ review.reviewedAt }}</td>
+                    <td>{{ resultLabel(review.result) }}</td>
+                    <td>{{ review.previousStage }} → {{ review.nextStage }}</td>
+                    <td>{{ review.nextReviewAt || "无需排期" }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="space-y-5">
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <h2 class="card-title">记录一次复习</h2>
+            <div class="grid gap-2">
+              <button
+                v-for="result in reviewResults"
+                :key="result"
+                class="btn btn-soft"
+                :class="reviewButtonClass(result)"
+                type="button"
+                :disabled="Boolean(reviewing)"
+                @click="openReviewNote(result)"
+              >
+                <Loader2 v-if="reviewing === result" class="h-4 w-4 animate-spin" />
+                {{ resultLabel(result) }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-error btn-outline w-full" type="button" :disabled="deleting" @click="deleteProblem">
+          <Loader2 v-if="deleting" class="h-4 w-4 animate-spin" />
+          <Trash2 v-else class="h-4 w-4" />
+          删除题目
+        </button>
+      </aside>
+
+      <div class="modal modal-middle" :class="{ 'modal-open': reviewModalOpen }" role="dialog" aria-modal="true">
+        <div class="modal-box">
+          <h2 class="text-xl font-black">记录：{{ selectedResult ? resultLabel(selectedResult) : "本次复习" }}</h2>
+          <form class="mt-4 space-y-4" @submit.prevent="submitReview">
+            <label class="block">
+              <span class="mb-2 block font-semibold">这次刷题有什么收获？</span>
+              <textarea
+                v-model="reviewNote"
+                class="textarea min-h-32 w-full"
+                :maxlength="REVIEW_NOTE_MAX_LENGTH"
+                :placeholder="reviewNotePlaceholder(selectedResult)"
+                :disabled="Boolean(reviewing)"
+              />
+            </label>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm text-base-content/45">{{ reviewNote.length }}/{{ REVIEW_NOTE_MAX_LENGTH }}</span>
+              <div class="modal-action mt-0">
+                <button class="btn btn-ghost" type="button" :disabled="Boolean(reviewing)" @click="closeReviewNote">取消</button>
+                <button class="btn btn-primary" type="submit" :disabled="Boolean(reviewing)">
+                  <Loader2 v-if="reviewing" class="h-4 w-4 animate-spin" />
+                  提交
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <button class="modal-backdrop" type="button" :disabled="Boolean(reviewing)" @click="closeReviewNote">关闭</button>
+      </div>
+    </div>
+  </AppFrame>
+</template>
