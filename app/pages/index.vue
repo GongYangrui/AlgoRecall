@@ -3,7 +3,7 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
 </script>
 
 <template>
-  <div class="page-shell study-grid">
+  <div class="page-shell recall-field">
     <div class="content-wrap min-h-screen py-5">
       <div class="navbar px-0">
         <div class="navbar-start">
@@ -15,8 +15,8 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
         </div>
       </div>
 
-      <section class="grid min-h-[calc(100vh-96px)] items-center gap-10 py-10 lg:grid-cols-[1.05fr_0.95fr]">
-        <div class="max-w-3xl">
+      <section class="landing-hero grid min-h-[calc(100vh-96px)] items-center gap-10 py-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div class="landing-copy max-w-3xl">
           <div class="badge badge-primary badge-soft mb-5">LeetCode 复习台</div>
           <h1 class="text-5xl font-black leading-[1.04] tracking-normal text-neutral md:text-7xl">
             把刷过的题，安排成每天刚好的复习量。
@@ -33,7 +33,7 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
           </div>
         </div>
 
-        <div class="aura aura-rainbow aura-sm hero-preview-aura w-full duration-2000">
+        <div class="aura aura-rainbow aura-sm hero-preview-aura landing-preview w-full duration-2000">
           <div class="soft-panel rounded-box w-full p-4">
             <div class="rounded-box bg-base-100 p-5">
               <div class="mb-5 flex items-center justify-between">

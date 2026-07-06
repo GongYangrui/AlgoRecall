@@ -63,6 +63,194 @@ body {
   background-size: 28px 28px;
 }
 
+.recall-field,
+.auth-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 17% 18%, rgb(7 140 140 / 0.12), transparent 29rem),
+    radial-gradient(circle at 83% 28%, rgb(196 138 24 / 0.12), transparent 27rem),
+    linear-gradient(180deg, #fcfcf7 0%, #f7f8f1 52%, #edf1e6 100%);
+}
+
+.recall-field::before,
+.auth-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    linear-gradient(rgb(18 33 44 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(18 33 44 / 0.035) 1px, transparent 1px);
+  background-position:
+    -1px -1px,
+    -1px -1px;
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgb(0 0 0 / 0.9), rgb(0 0 0 / 0.18) 78%, transparent);
+}
+
+.recall-field::after,
+.auth-shell::after {
+  content: "";
+  position: absolute;
+  inset: auto -12vw -22rem -12vw;
+  z-index: -1;
+  height: 38rem;
+  border: 1px solid rgb(7 140 140 / 0.14);
+  border-radius: 50% 50% 0 0;
+  background:
+    radial-gradient(ellipse at center, rgb(7 140 140 / 0.05), transparent 62%),
+    repeating-radial-gradient(ellipse at center, transparent 0 5.6rem, rgb(7 140 140 / 0.08) 5.65rem 5.75rem);
+  opacity: 0.9;
+  transform: rotate(-2deg);
+}
+
+.landing-hero {
+  position: relative;
+}
+
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  top: 9%;
+  left: -7%;
+  z-index: -1;
+  width: min(58vw, 680px);
+  aspect-ratio: 1.7;
+  border: 1px solid rgb(7 140 140 / 0.16);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, transparent 0 18%, rgb(7 140 140 / 0.08) 18.2% 18.5%, transparent 18.7%),
+    linear-gradient(90deg, transparent 0 52%, rgb(196 138 24 / 0.12) 52.2% 52.5%, transparent 52.7%);
+  transform: rotate(-8deg);
+}
+
+.landing-copy,
+.landing-preview,
+.auth-stage {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-stage {
+  align-items: center;
+}
+
+.auth-card {
+  border: 1px solid rgb(18 33 44 / 0.1);
+  border-radius: var(--radius-box);
+  background:
+    linear-gradient(180deg, rgb(252 252 247 / 0.96), rgb(252 252 247 / 0.9)),
+    linear-gradient(135deg, rgb(7 140 140 / 0.08), transparent 42%);
+  box-shadow:
+    0 24px 80px rgb(18 33 44 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.72);
+  padding: clamp(1.1rem, 2.4vw, 1.65rem);
+  backdrop-filter: blur(18px);
+}
+
+.auth-form-fieldset {
+  border: 1px solid rgb(18 33 44 / 0.1);
+  border-radius: var(--radius-box);
+  background: rgb(252 252 247 / 0.72);
+  padding: 1rem;
+}
+
+.auth-insight {
+  position: relative;
+  min-height: 520px;
+  border: 1px solid rgb(18 33 44 / 0.08);
+  border-radius: var(--radius-box);
+  background:
+    linear-gradient(135deg, rgb(252 252 247 / 0.2), transparent 45%),
+    repeating-linear-gradient(90deg, transparent 0 4.25rem, rgb(18 33 44 / 0.045) 4.3rem 4.35rem);
+  padding: 2.25rem;
+}
+
+.auth-insight::after {
+  content: "";
+  position: absolute;
+  right: 2rem;
+  bottom: 2rem;
+  left: 2rem;
+  height: 8rem;
+  border-bottom: 1px solid rgb(7 140 140 / 0.16);
+  border-left: 1px solid rgb(7 140 140 / 0.1);
+  border-radius: 0 0 0 1.5rem;
+  background:
+    linear-gradient(135deg, transparent 0 28%, rgb(7 140 140 / 0.16) 28.2% 28.7%, transparent 29%),
+    linear-gradient(45deg, transparent 0 53%, rgb(196 138 24 / 0.18) 53.2% 53.7%, transparent 54%);
+}
+
+.auth-note-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.auth-note-grid > div {
+  border: 1px solid rgb(18 33 44 / 0.08);
+  border-radius: var(--radius-box);
+  background: rgb(252 252 247 / 0.62);
+  padding: 1rem;
+}
+
+.recall-orbit {
+  position: relative;
+  min-height: 170px;
+  border: 1px solid rgb(7 140 140 / 0.16);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, rgb(7 140 140 / 0.08), transparent 34%),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 2rem, rgb(18 33 44 / 0.045) 2.03rem 2.08rem);
+}
+
+.recall-orbit::before {
+  content: "";
+  position: absolute;
+  inset: 50% 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(7 140 140 / 0.32), transparent);
+  transform: rotate(-9deg);
+}
+
+.recall-node {
+  position: absolute;
+  display: grid;
+  width: 3.4rem;
+  height: 3.4rem;
+  place-items: center;
+  border-radius: 999px;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+  font-size: 0.86rem;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgb(18 33 44 / 0.11);
+}
+
+.recall-node-primary {
+  top: 22%;
+  left: 12%;
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+
+.recall-node-secondary {
+  top: 43%;
+  left: 48%;
+  background: var(--color-secondary);
+  color: var(--color-secondary-content);
+}
+
+.recall-node-accent {
+  right: 10%;
+  bottom: 18%;
+  background: var(--color-accent);
+  color: var(--color-accent-content);
+}
+
 .content-wrap {
   width: min(1180px, calc(100% - 32px));
   margin-inline: auto;
