@@ -15,6 +15,13 @@
       "when": 1782723868248,
       "tag": "0001_adorable_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783329445971,
+      "tag": "0002_blushing_blink",
+      "breakpoints": true
     }
   ]
 }

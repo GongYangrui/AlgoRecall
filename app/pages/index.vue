@@ -1,5 +1,16 @@
+// @ts-nocheck - Nuxt 4 type checker stack depth issue with route matching
 <script setup lang="ts">
 import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
+const session = ref<{ user?: { role?: string } }>({});
+const requestFetch = useRequestFetch();
+try {
+  const result = await useAsyncData("home-session", () =>
+    requestFetch<{ user?: { role?: string } }>("/api/auth/get-session"),
+  );
+  session.value = result.data.value || {};
+} catch {
+  session.value = {};
+}
 </script>
 
 <template>
@@ -10,6 +21,7 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
           <NuxtLink to="/" class="btn btn-ghost px-0 text-xl font-black">AlgoRecall</NuxtLink>
         </div>
         <div class="navbar-end gap-2">
+          <NuxtLink v-if="session.user?.role === 'admin'" to="/admin" class="btn btn-ghost">管理后台</NuxtLink>
           <NuxtLink to="/login" class="btn btn-ghost">登录</NuxtLink>
           <NuxtLink to="/signup" class="btn btn-primary">开始使用</NuxtLink>
         </div>
@@ -79,14 +91,6 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
               <p class="text-base-content/65">按解题反馈推进下一次复习，不靠手动记日期。</p>
             </div>
           </div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
         </div>
         <div class="hover-3d w-full">
           <div class="card h-full bg-base-100 shadow-sm">
@@ -96,14 +100,6 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
               <p class="text-base-content/65">搜索题号、标题和标签，从 LeetCode 索引快速加入。</p>
             </div>
           </div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
         </div>
         <div class="hover-3d w-full">
           <div class="card h-full bg-base-100 shadow-sm">
@@ -113,14 +109,6 @@ import { ArrowRight, CalendarClock, LineChart, Search } from "@lucide/vue";
               <p class="text-base-content/65">看清薄弱题、复习分布和已掌握比例。</p>
             </div>
           </div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
         </div>
       </section>
     </div>

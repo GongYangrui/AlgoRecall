@@ -79,8 +79,37 @@ export const leetcodeQuestions = pgTable(
   ],
 );
 
+export const appEvents = pgTable(
+  "app_events",
+  {
+    id: text("id").primaryKey(),
+    timestamp: text("timestamp").notNull(),
+    level: text("level").notNull(),
+    event: text("event").notNull(),
+    message: text("message").notNull(),
+    errorName: text("error_name"),
+    errorStack: text("error_stack"),
+    errorCause: text("error_cause"),
+    requestId: text("request_id"),
+    userId: text("user_id"),
+    method: text("method"),
+    route: text("route"),
+    statusCode: integer("status_code"),
+    durationMs: integer("duration_ms"),
+    metadata: text("metadata").default("{}"),
+  },
+  (table) => [
+    index("idx_app_events_timestamp").on(table.timestamp),
+    index("idx_app_events_level").on(table.level),
+    index("idx_app_events_request_id").on(table.requestId),
+    index("idx_app_events_event").on(table.event),
+  ],
+);
+
 export type ProblemRow = typeof problems.$inferSelect;
 export type NewProblemRow = typeof problems.$inferInsert;
 export type ReviewRow = typeof reviews.$inferSelect;
 export type NewReviewRow = typeof reviews.$inferInsert;
 export type LeetcodeQuestionRow = typeof leetcodeQuestions.$inferSelect;
+export type AppEventRow = typeof appEvents.$inferSelect;
+export type NewAppEventRow = typeof appEvents.$inferInsert;

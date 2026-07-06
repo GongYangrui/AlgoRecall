@@ -31,3 +31,4 @@ function getDb() {
 
 export const db = getDb();
 export { getDb };
+export * as schema from "./schema";
