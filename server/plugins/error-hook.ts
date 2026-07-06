@@ -1,6 +1,6 @@
 import { logError } from "../utils/logger";
 
-export default defineNitroPlugin((_nitroApp) => {
+export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook("error", async (error: unknown, { event }: { event: unknown }) => {
     const err = error instanceof Error ? error : new Error(String(error));
     const requestId = (event as Record<string, unknown> | undefined)?.context?.requestId as string | undefined;
