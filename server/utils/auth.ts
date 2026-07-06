@@ -9,6 +9,10 @@ const adminEmails = (process.env.ADMIN_EMAILS || "")
   .filter(Boolean);
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  trustedOrigins: (process.env.TRUSTED_ORIGINS || process.env.BETTER_AUTH_URL || "http://localhost:3000")
+    .split(",")
+    .map((o) => o.trim()),
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: authSchema,
