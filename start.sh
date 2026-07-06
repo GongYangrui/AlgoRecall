@@ -13,4 +13,5 @@ if [ ! -f .env ] || ! grep -q "^BETTER_AUTH_SECRET=" .env; then
 fi
 
 docker compose up -d --build
-echo "[start] App running at http://localhost:3000"
+echo "[start] App running locally at http://127.0.0.1:3000"
+echo "[start] For public domain access, configure Nginx with docs/deployment-nginx.md"

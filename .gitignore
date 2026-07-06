@@ -41,7 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 
 # database
-/data/
+/data/*
 !data/.gitkeep
 !data/leetcode_details.json
 data.db
