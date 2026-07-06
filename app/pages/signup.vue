@@ -30,7 +30,7 @@ async function submit() {
 
 <template>
   <div class="auth-shell min-h-screen px-4 py-8">
-    <div class="auth-stage mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-5xl items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,440px)]">
+    <div class="auth-stage mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-5xl place-items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,440px)]">
       <section class="auth-insight hidden lg:block" aria-hidden="true">
         <div class="auth-insight-header">
           <p class="font-mono text-xs font-bold uppercase tracking-[0.24em] text-primary/80">Start small</p>
@@ -53,7 +53,7 @@ async function submit() {
         </div>
       </section>
 
-      <form class="auth-card w-full" @submit.prevent="submit">
+      <form class="auth-card w-full max-w-md lg:max-w-none" @submit.prevent="submit">
         <div class="mb-5 text-center">
           <NuxtLink to="/" class="text-3xl font-black">AlgoRecall</NuxtLink>
           <p class="mt-2 text-base-content/60">从第一道题开始建立复习节奏</p>
