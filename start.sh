@@ -5,8 +5,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 COMPOSE="docker compose"
-APP_URL="${BETTER_AUTH_URL:-http://localhost:3000}"
-APP_CONTAINER="algorecall-app"
+APP_URL="http://localhost:3000"
+APP_HEALTH_URL=""
+APP_SERVICE="app"
 
 # ── colors ───────────────────────────────────────────────
 green()  { printf '\033[1;32m%s\033[0m\n' "$*"; }
@@ -48,35 +49,95 @@ ensure_env() {
     info "Set ADMIN_EMAILS=admin@algorecall.local"
   fi
 
-  if ! grep -q "^DATABASE_URL=" .env 2>/dev/null; then
-    echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/algorecall" >> .env
-    info "Set DATABASE_URL (local dev default)"
+  if ! grep -q "^HOST_PORT=" .env 2>/dev/null; then
+    echo "HOST_PORT=3000" >> .env
+    info "Set HOST_PORT=3000"
+  fi
+
+  if ! grep -q "^COMPOSE_DATABASE_URL=" .env 2>/dev/null; then
+    echo "COMPOSE_DATABASE_URL=postgresql://postgres:postgres@postgres:5432/algorecall" >> .env
+    info "Set COMPOSE_DATABASE_URL (Docker Compose default)"
+  fi
+
+  if ! grep -q "^TRUSTED_ORIGINS=" .env 2>/dev/null; then
+    local auth_url
+    auth_url="$(grep "^BETTER_AUTH_URL=" .env | tail -n 1 | cut -d= -f2-)"
+    echo "TRUSTED_ORIGINS=${auth_url:-http://localhost:3000}" >> .env
+    info "Set TRUSTED_ORIGINS=${auth_url:-http://localhost:3000}"
+  fi
+
+  if ! grep -q "^APP_VERSION=" .env 2>/dev/null; then
+    local version="dev"
+    if command -v git &>/dev/null && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      version="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
+    fi
+    echo "APP_VERSION=$version" >> .env
+    info "Set APP_VERSION=$version"
   fi
 }
 
-wait_for_container() {
-  local name="$1"
+load_env() {
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+  APP_URL="${BETTER_AUTH_URL:-http://localhost:3000}"
+  APP_HEALTH_URL="${APP_HEALTH_URL:-http://127.0.0.1:${HOST_PORT:-3000}}"
+}
+
+wait_for_service_running() {
+  local service="$1"
   local timeout="${2:-60}"
   local elapsed=0
-  info "Waiting for $name to be healthy..."
+  local container_id
+  local status
+  info "Waiting for $service to be running..."
   while [ "$elapsed" -lt "$timeout" ]; do
-    if [ "$($COMPOSE ps --status running --format '{{.Name}}' 2>/dev/null | grep -c "$name")" -gt 0 ]; then
+    container_id="$($COMPOSE ps -q "$service" 2>/dev/null || true)"
+    if [ -n "$container_id" ]; then
+      status="$(docker inspect --format '{{.State.Status}}' "$container_id" 2>/dev/null || true)"
+    else
+      status=""
+    fi
+    if [ "$status" = "running" ]; then
       return 0
     fi
     sleep 2
     elapsed=$((elapsed + 2))
   done
-  red "Timeout waiting for $name"
+  red "Timeout waiting for $service"
+  return 1
+}
+
+wait_for_service_healthy() {
+  local service="$1"
+  local timeout="${2:-60}"
+  local elapsed=0
+  local container_id
+  info "Waiting for $service to be healthy..."
+  while [ "$elapsed" -lt "$timeout" ]; do
+    container_id="$($COMPOSE ps -q "$service" 2>/dev/null || true)"
+    if [ -n "$container_id" ]; then
+      local health
+      health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)"
+      if [ "$health" = "healthy" ] || [ "$health" = "running" ]; then
+        return 0
+      fi
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  red "Timeout waiting for $service health"
   return 1
 }
 
 wait_for_app() {
   local timeout="${1:-60}"
   local elapsed=0
-  info "Waiting for app at $APP_URL ..."
+  info "Waiting for app at $APP_HEALTH_URL ..."
   while [ "$elapsed" -lt "$timeout" ]; do
-    if curl -sf "$APP_URL/api/health" >/dev/null 2>&1 || \
-       curl -sf "$APP_URL/" >/dev/null 2>&1; then
+    if curl -sf "$APP_HEALTH_URL/api/health" >/dev/null 2>&1 || \
+       curl -sf "$APP_HEALTH_URL/" >/dev/null 2>&1; then
       return 0
     fi
     sleep 2
@@ -93,40 +154,43 @@ promote_admin() {
     exit 1
   fi
   info "Promoting $email to admin..."
-  if $COMPOSE exec -T "$APP_CONTAINER" node scripts/promote-admin.mjs "$email"; then
-    green "Promoted $email to admin"
-  else
-    # fallback: try running locally if container isn't running
-    if [ -f .env ]; then
-      export $(grep -v '^#' .env | xargs) 2>/dev/null || true
-    fi
-    node scripts/promote-admin.mjs "$email"
-  fi
+  $COMPOSE run --rm --no-deps "$APP_SERVICE" node scripts/promote-admin.mjs "$email"
+  green "Promoted $email to admin"
 }
 
 cleanup_logs() {
   local days="${1:-30}"
-  info "Cleaning app_events older than $days days..."
-  if $COMPOSE exec -T "$APP_CONTAINER" node scripts/cleanup-app-events.mjs "$days"; then
-    green "Log cleanup complete"
-  else
-    yellow "Could not run cleanup inside container. Try manually:"
-    echo "  docker compose exec app node scripts/cleanup-app-events.mjs $days"
-  fi
+  info "Cleaning app_events and analytics_events older than $days days..."
+  $COMPOSE run --rm --no-deps "$APP_SERVICE" node scripts/cleanup-app-events.mjs "$days"
+  green "Log cleanup complete"
+}
+
+run_migrations() {
+  info "Running database migrations..."
+  $COMPOSE run --rm --no-deps "$APP_SERVICE" npm run db:migrate
+  green "Migrations applied"
 }
 
 # ── commands ─────────────────────────────────────────────
 cmd_up() {
   check_prereqs
   ensure_env
+  load_env
 
   info "Building Docker image..."
-  $COMPOSE build app
+  $COMPOSE build "$APP_SERVICE"
 
-  info "Starting services..."
-  $COMPOSE up -d
+  info "Starting database services..."
+  $COMPOSE up -d postgres redis
+  wait_for_service_healthy postgres 90
+  wait_for_service_healthy redis 60
 
-  wait_for_container "$APP_CONTAINER" 60
+  run_migrations
+
+  info "Starting app service..."
+  $COMPOSE up -d "$APP_SERVICE"
+
+  wait_for_service_running "$APP_SERVICE" 60
   wait_for_app 90
 
   echo ""
@@ -154,26 +218,30 @@ cmd_logs() {
 }
 
 cmd_admin() {
+  check_prereqs
+  ensure_env
+  load_env
+  $COMPOSE up -d postgres
+  wait_for_service_healthy postgres 90
   promote_admin "${1:-}"
 }
 
 cmd_cleanup() {
+  check_prereqs
+  ensure_env
+  load_env
+  $COMPOSE up -d postgres
+  wait_for_service_healthy postgres 90
   cleanup_logs "${1:-30}"
 }
 
 cmd_migrate() {
-  info "Running migrations..."
-  if $COMPOSE ps --status running --format '{{.Name}}' | grep -q "$APP_CONTAINER"; then
-    $COMPOSE exec -T "$APP_CONTAINER" node -e "
-      const { migrate } = require('drizzle-orm/node-postgres/migrator');
-      const { db } = require('./server/db/index.ts');
-      migrate(db, { migrationsFolder: './drizzle' }).then(() => console.log('[migrate] done')).catch(e => { console.error('[migrate] failed', e); process.exit(1); });
-    "
-    green "Migrations applied"
-  else
-    red "App container is not running. Start it first: $0 up"
-    exit 1
-  fi
+  check_prereqs
+  ensure_env
+  load_env
+  $COMPOSE up -d postgres
+  wait_for_service_healthy postgres 90
+  run_migrations
 }
 
 cmd_status() {
@@ -181,7 +249,7 @@ cmd_status() {
 }
 
 cmd_shell() {
-  $COMPOSE exec "$APP_CONTAINER" sh
+  $COMPOSE exec "$APP_SERVICE" sh
 }
 
 # ── usage ─────────────────────────────────────────────────
@@ -190,18 +258,18 @@ usage() {
 AlgoRecall one-click deployment script
 
 Usage:
-  ./start.sh up              Build image + start all services
+  ./start.sh up              Build image + start DB + run migrations + start app
   ./start.sh down            Stop all services
   ./start.sh restart         Stop + rebuild + start
   ./start.sh logs [service]  Tail logs (default: app)
   ./start.sh admin <email>   Promote a user to admin
-  ./start.sh cleanup [days]  Delete app_events older than N days (default: 30)
+  ./start.sh cleanup [days]  Delete app_events and analytics_events older than N days (default: 30)
   ./start.sh migrate         Run DB migrations manually
   ./start.sh status          Show container status
   ./start.sh shell           Open a shell inside the app container
 
 Examples:
-  ./start.sh up                        # first deploy
+  ./start.sh up                        # first deploy or update deploy
   ./start.sh admin me@example.com      # make yourself admin
   ./start.sh logs app                  # watch app logs
   ./start.sh cleanup 7                 # keep only 7 days of logs
@@ -213,9 +281,9 @@ case "${1:-}" in
   up)        cmd_up ;;
   down)      cmd_down ;;
   restart)   cmd_restart ;;
-  logs)      cmd_logs "$2" ;;
-  admin)     cmd_admin "$2" ;;
-  cleanup)   cmd_cleanup "$2" ;;
+  logs)      cmd_logs "${2:-}" ;;
+  admin)     cmd_admin "${2:-}" ;;
+  cleanup)   cmd_cleanup "${2:-}" ;;
   migrate)   cmd_migrate ;;
   status)    cmd_status ;;
   shell)     cmd_shell ;;

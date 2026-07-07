@@ -1,17 +1,38 @@
-import { logError } from "../utils/logger";
+import { logError, logWarn } from "../utils/logger";
+import {
+  getErrorStatusCode,
+  getEventRoute,
+  getEventUserId,
+  getLogContext,
+  getLogOperation,
+  getRequestDurationMs,
+  getRequestId,
+  getRequestSummary,
+} from "../utils/log-context";
 
 export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook("error", async (error: unknown, { event }: { event: unknown }) => {
     const err = error instanceof Error ? error : new Error(String(error));
-    const requestId = (event as Record<string, unknown> | undefined)?.context?.requestId as string | undefined;
-    const ev = event as { path?: string; method?: string; node?: { req?: { url?: string } } } | undefined;
-    const route = ev?.path || ev?.node?.req?.url || "";
-    await logError("server.unhandled_error", {
+    const ev = event as Parameters<typeof getRequestSummary>[0] | undefined;
+    if (!ev) return;
+
+    const statusCode = getErrorStatusCode(error, ev);
+    if (statusCode < 500 && statusCode !== 409) return;
+
+    const logger = statusCode === 409 ? logWarn : logError;
+    logger(statusCode === 409 ? "server.conflict" : "server.unhandled_error", {
       message: err.message,
       error: err,
-      requestId,
-      route,
-      method: ev?.method,
+      requestId: getRequestId(ev),
+      userId: getEventUserId(ev),
+      route: getEventRoute(ev),
+      method: ev.method,
+      statusCode,
+      durationMs: getRequestDurationMs(ev),
+      source: "server",
+      operation: getLogOperation(ev),
+      request: getRequestSummary(ev),
+      metadata: getLogContext(ev) ? { context: getLogContext(ev) } : undefined,
     });
   });
 });

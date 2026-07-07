@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { createError } from "h3";
 import { db } from "../../db";
 import { problems, reviews } from "../../db/schema";
+import { trackAnalyticsEvent } from "../../utils/analytics";
 import { requireSession } from "../../utils/auth-session";
 import { attachProblemSources } from "../../utils/study-lists";
 
@@ -26,5 +27,13 @@ export default defineEventHandler(async (event) => {
     .limit(50);
 
   const [problemWithSources] = await attachProblemSources(session.user.id, [problem]);
+  await trackAnalyticsEvent({
+    userId: session.user.id,
+    event: "problem_viewed",
+    entityType: "problem",
+    entityId: id,
+    route: `/api/problems/${id}`,
+    metadata: { titleSlug: problem.titleSlug, frontendId: problem.frontendId },
+  });
   return { problem: problemWithSources, history };
 });

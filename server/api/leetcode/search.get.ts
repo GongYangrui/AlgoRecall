@@ -3,11 +3,13 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../../db";
 import { problems } from "../../db/schema";
 import { requireSession } from "../../utils/auth-session";
+import { setLogOperation } from "../../utils/log-context";
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
   const query = getQuery(event);
   const q = typeof query.q === "string" ? query.q : "";
+  setLogOperation(event, "leetcode.search", { q: q.trim().slice(0, 100) });
   if (!q.trim()) return [];
 
   const questions = await searchLeetcodeQuestions(q);

@@ -21,6 +21,12 @@ RUN adduser --system --uid 1001 nuxt
 COPY --from=builder --chown=nuxt:nodejs /app/.output ./.output
 COPY --from=builder --chown=nuxt:nodejs /app/data/leetcode_details.json ./data/leetcode_details.json
 COPY --from=builder --chown=nuxt:nodejs /app/drizzle ./drizzle
+COPY --from=deps --chown=nuxt:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nuxt:nodejs /app/package.json /app/package-lock.json ./
+COPY --from=builder --chown=nuxt:nodejs /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder --chown=nuxt:nodejs /app/server/db ./server/db
+COPY --from=builder --chown=nuxt:nodejs /app/shared ./shared
+COPY --from=builder --chown=nuxt:nodejs /app/scripts ./scripts
 
 USER nuxt
 EXPOSE 3000

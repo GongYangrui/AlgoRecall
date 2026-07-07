@@ -6,9 +6,9 @@ export default defineNuxtRouteMiddleware(async () => {
     })) as { user?: { role?: string } } | null;
 
     if (!session?.user || session.user.role !== "admin") {
-      navigateTo("/login");
+      return navigateTo("/login");
     }
   } catch {
-    navigateTo("/login");
+    return navigateTo("/login");
   }
 });

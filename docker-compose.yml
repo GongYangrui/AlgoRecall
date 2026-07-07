@@ -2,11 +2,13 @@ services:
   app:
     build: .
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${HOST_PORT:-3000}:3000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/algorecall
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${COMPOSE_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/algorecall}
+      - REDIS_URL=${COMPOSE_REDIS_URL:-redis://redis:6379}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
+      - TRUSTED_ORIGINS=${TRUSTED_ORIGINS:-${BETTER_AUTH_URL:-http://localhost:3000}}
+      - APP_VERSION=${APP_VERSION:-dev}
       - NODE_ENV=production
     env_file:
       - .env

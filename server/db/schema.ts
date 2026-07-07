@@ -131,6 +131,7 @@ export const appEvents = pgTable(
     id: text("id").primaryKey(),
     timestamp: text("timestamp").notNull(),
     level: text("level").notNull(),
+    source: text("source").notNull().default("server"),
     event: text("event").notNull(),
     message: text("message").notNull(),
     errorName: text("error_name"),
@@ -142,13 +143,39 @@ export const appEvents = pgTable(
     route: text("route"),
     statusCode: integer("status_code"),
     durationMs: integer("duration_ms"),
+    appVersion: text("app_version").notNull().default("dev"),
+    environment: text("environment").notNull().default("development"),
     metadata: text("metadata").default("{}"),
   },
   (table) => [
     index("idx_app_events_timestamp").on(table.timestamp),
     index("idx_app_events_level").on(table.level),
+    index("idx_app_events_source").on(table.source),
+    index("idx_app_events_app_version").on(table.appVersion),
+    index("idx_app_events_status_code").on(table.statusCode),
     index("idx_app_events_request_id").on(table.requestId),
     index("idx_app_events_event").on(table.event),
+  ],
+);
+
+export const analyticsEvents = pgTable(
+  "analytics_events",
+  {
+    id: text("id").primaryKey(),
+    timestamp: text("timestamp").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    entityType: text("entity_type"),
+    entityId: text("entity_id"),
+    route: text("route"),
+    metadata: text("metadata").default("{}"),
+  },
+  (table) => [
+    index("idx_analytics_events_timestamp").on(table.timestamp),
+    index("idx_analytics_events_user_timestamp").on(table.userId, table.timestamp),
+    index("idx_analytics_events_event_timestamp").on(table.event, table.timestamp),
   ],
 );
 
@@ -163,3 +190,5 @@ export type StudyListItemProgressRow = typeof studyListItemProgress.$inferSelect
 export type NewStudyListItemProgressRow = typeof studyListItemProgress.$inferInsert;
 export type AppEventRow = typeof appEvents.$inferSelect;
 export type NewAppEventRow = typeof appEvents.$inferInsert;
+export type AnalyticsEventRow = typeof analyticsEvents.$inferSelect;
+export type NewAnalyticsEventRow = typeof analyticsEvents.$inferInsert;

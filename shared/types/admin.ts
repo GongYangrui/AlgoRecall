@@ -2,16 +2,28 @@ export interface AdminOverview {
   userCount: number;
   problemCount: number;
   reviewCount: number;
-  activeUsers24h: number;
+  todayActiveUsers: number;
+  activeUsers7d: number;
+  todayStartedItems: number;
+  todayReviews: number;
   errorCount24h: number;
   dbConnected: boolean;
   appUptime: number;
+}
+
+export interface AdminDailyMetric {
+  date: string;
+  activeUsers: number;
+  startedItems: number;
+  reviews: number;
+  errors: number;
 }
 
 export interface AdminLogEntry {
   id: string;
   timestamp: string;
   level: "error" | "warn" | "info" | "audit";
+  source: "server" | "client" | "system";
   event: string;
   message: string;
   errorName?: string;
@@ -23,6 +35,8 @@ export interface AdminLogEntry {
   route?: string;
   statusCode?: number;
   durationMs?: number;
+  appVersion?: string;
+  environment?: string;
   metadata?: Record<string, unknown>;
 }
 

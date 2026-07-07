@@ -23,6 +23,9 @@ export default defineNuxtConfig({
     betterAuthSecret: process.env.BETTER_AUTH_SECRET,
     betterAuthUrl: process.env.BETTER_AUTH_URL,
     adminEmails: process.env.ADMIN_EMAILS,
+    public: {
+      appVersion: process.env.APP_VERSION || process.env.GIT_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || process.env.COMMIT_SHA || "dev",
+    },
   },
   typescript: {
     typeCheck: true,

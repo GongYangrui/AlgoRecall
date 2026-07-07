@@ -8,7 +8,9 @@ import { calculateNextReview, getToday } from "@shared/schedule";
 import type { ReviewResult } from "@shared/types";
 import { db } from "../db";
 import { problems, reviews } from "../db/schema";
+import { trackAnalyticsEvent } from "../utils/analytics";
 import { requireSession } from "../utils/auth-session";
+import { setLogOperation } from "../utils/log-context";
 import { markStudyListProgressReviewed } from "../utils/study-lists";
 
 const reviewInput = z.object({
@@ -25,6 +27,7 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: "Invalid review" });
 
   const { problemId, result, note, studyListSlug, titleSlug } = parsed.data;
+  setLogOperation(event, "review.submit", { problemId, result, studyListSlug, titleSlug });
   const [problem] = await db
     .select()
     .from(problems)
@@ -73,6 +76,14 @@ export default defineEventHandler(async (event) => {
     .returning();
 
   await markStudyListProgressReviewed(session.user.id, updatedProblem as typeof problem, { studyListSlug, titleSlug });
+  await trackAnalyticsEvent({
+    userId: session.user.id,
+    event: "review_submitted",
+    entityType: "problem",
+    entityId: problemId,
+    route: "/api/reviews",
+    metadata: { result, studyListSlug, titleSlug },
+  });
 
   return { review, problem: updatedProblem };
 });

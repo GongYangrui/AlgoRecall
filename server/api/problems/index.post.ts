@@ -7,6 +7,7 @@ import { getToday } from "@shared/schedule";
 import { db } from "../../db";
 import { problems } from "../../db/schema";
 import { requireSession } from "../../utils/auth-session";
+import { setLogOperation } from "../../utils/log-context";
 
 const problemInput = z.object({
   title: z.string().min(1),
@@ -29,6 +30,12 @@ function normalizeTags(value: string | string[] | null | undefined) {
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
   const body = await readBody(event);
+  setLogOperation(event, "problem.create", {
+    bulk: Array.isArray(body?.problems),
+    count: Array.isArray(body?.problems) ? body.problems.length : 1,
+    titleSlug: Array.isArray(body?.problems) ? undefined : body?.titleSlug,
+    frontendId: Array.isArray(body?.problems) ? undefined : body?.frontendId,
+  });
   const now = format(new Date(), "yyyy-MM-dd HH:mm:ss");
   const nextReviewAt = getToday();
 

@@ -17,15 +17,37 @@ if (!databaseUrl) {
 
 const client = new Client({ connectionString: databaseUrl });
 
+function pad(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatLocalDateTime(date) {
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join("-") + " " + [
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds()),
+  ].join(":");
+}
+
 try {
   await client.connect();
-  const result = await client.query(
-    `DELETE FROM app_events WHERE timestamp < now() - interval '$1 days' RETURNING id`,
-    [String(days)],
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const appEventsResult = await client.query(
+    "DELETE FROM app_events WHERE timestamp < $1 RETURNING id",
+    [cutoff.toISOString()],
   );
-  console.log(`Deleted ${result.rowCount} app_events older than ${days} days`);
+  const analyticsEventsResult = await client.query(
+    "DELETE FROM analytics_events WHERE timestamp < $1 RETURNING id",
+    [formatLocalDateTime(cutoff)],
+  );
+  console.log(`Deleted ${appEventsResult.rowCount} app_events older than ${days} days`);
+  console.log(`Deleted ${analyticsEventsResult.rowCount} analytics_events older than ${days} days`);
 } catch (error) {
-  console.error("Failed to cleanup app_events:", error.message);
+  console.error("Failed to cleanup events:", error.message);
   process.exit(1);
 } finally {
   await client.end();

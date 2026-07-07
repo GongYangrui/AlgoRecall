@@ -17,9 +17,13 @@ function getEventHeaders(event: H3Event) {
 
 export async function getAuthSession(event: H3Event) {
   try {
-    return await auth.api.getSession({
+    const session = await auth.api.getSession({
       headers: getEventHeaders(event),
     });
+    if (session) {
+      (event.context as Record<string, unknown>).authSession = session;
+    }
+    return session;
   } catch {
     return null;
   }

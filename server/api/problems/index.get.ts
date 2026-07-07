@@ -1,6 +1,7 @@
 import { and, count, eq, like, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { problems } from "../../db/schema";
+import { trackAnalyticsEvent } from "../../utils/analytics";
 import { requireSession } from "../../utils/auth-session";
 import { attachProblemSources } from "../../utils/study-lists";
 
@@ -34,6 +35,15 @@ export default defineEventHandler(async (event) => {
     .orderBy(problems.nextReviewAt, problems.createdAt)
     .limit(pageSize)
     .offset((page - 1) * pageSize);
+
+  await trackAnalyticsEvent({
+    userId: session.user.id,
+    event: "problem_library_viewed",
+    entityType: "page",
+    entityId: "problems",
+    route: "/api/problems",
+    metadata: { q, difficulty, status, page, pageSize },
+  });
 
   return {
     items: await attachProblemSources(session.user.id, items),
