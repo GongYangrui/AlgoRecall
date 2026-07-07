@@ -167,6 +167,7 @@ function jumpToPage() {
                             {{ tag }}
                           </span>
                         </div>
+                        <ProblemSources class="mt-1" :sources="problem.sources" :limit="2" />
                       </div>
                     </div>
                   </td>

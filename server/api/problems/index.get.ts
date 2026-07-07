@@ -2,6 +2,7 @@ import { and, count, eq, like, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { problems } from "../../db/schema";
 import { requireSession } from "../../utils/auth-session";
+import { attachProblemSources } from "../../utils/study-lists";
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
@@ -35,7 +36,7 @@ export default defineEventHandler(async (event) => {
     .offset((page - 1) * pageSize);
 
   return {
-    items,
+    items: await attachProblemSources(session.user.id, items),
     total: totalRow?.count ?? 0,
     page,
     pageSize,

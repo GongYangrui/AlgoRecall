@@ -10,6 +10,7 @@ export const problems = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     titleCn: text("title_cn"),
+    titleSlug: text("title_slug"),
     frontendId: text("frontend_id"),
     tagsCn: text("tags_cn"),
     url: text("url").notNull(),
@@ -30,6 +31,8 @@ export const problems = pgTable(
   },
   (table) => [
     uniqueIndex("uq_problems_user_frontend").on(table.userId, table.frontendId),
+    uniqueIndex("uq_problems_user_title_slug").on(table.userId, table.titleSlug),
+    index("idx_problems_user_title_slug").on(table.userId, table.titleSlug),
     index("idx_problems_user_next_review").on(table.userId, table.nextReviewAt, table.createdAt),
     index("idx_problems_user_status").on(table.userId, table.status),
   ],
@@ -79,6 +82,49 @@ export const leetcodeQuestions = pgTable(
   ],
 );
 
+export const studyListEnrollments = pgTable(
+  "study_list_enrollments",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    studyListSlug: text("study_list_slug").notNull(),
+    dailyNewCount: integer("daily_new_count").notNull().default(2),
+    active: integer("active").notNull().default(1),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_study_list_enrollments_user_slug").on(table.userId, table.studyListSlug),
+    index("idx_study_list_enrollments_user_active").on(table.userId, table.active),
+  ],
+);
+
+export const studyListItemProgress = pgTable(
+  "study_list_item_progress",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    studyListSlug: text("study_list_slug").notNull(),
+    titleSlug: text("title_slug").notNull(),
+    problemId: text("problem_id").references(() => problems.id, { onDelete: "set null" }),
+    order: integer("order").notNull(),
+    mode: text("mode").notNull().default("follow_existing"),
+    status: text("status").notNull().default("not_started"),
+    learnedAt: text("learned_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_study_list_item_progress_user_list_slug").on(table.userId, table.studyListSlug, table.titleSlug),
+    index("idx_study_list_item_progress_user_problem").on(table.userId, table.problemId),
+    index("idx_study_list_item_progress_user_status").on(table.userId, table.status),
+  ],
+);
+
 export const appEvents = pgTable(
   "app_events",
   {
@@ -111,5 +157,9 @@ export type NewProblemRow = typeof problems.$inferInsert;
 export type ReviewRow = typeof reviews.$inferSelect;
 export type NewReviewRow = typeof reviews.$inferInsert;
 export type LeetcodeQuestionRow = typeof leetcodeQuestions.$inferSelect;
+export type StudyListEnrollmentRow = typeof studyListEnrollments.$inferSelect;
+export type NewStudyListEnrollmentRow = typeof studyListEnrollments.$inferInsert;
+export type StudyListItemProgressRow = typeof studyListItemProgress.$inferSelect;
+export type NewStudyListItemProgressRow = typeof studyListItemProgress.$inferInsert;
 export type AppEventRow = typeof appEvents.$inferSelect;
 export type NewAppEventRow = typeof appEvents.$inferInsert;

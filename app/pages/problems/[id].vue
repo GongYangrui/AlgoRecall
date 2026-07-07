@@ -165,6 +165,11 @@ async function deleteProblem() {
           </div>
 
           <div>
+            <h2 class="mb-2 font-black">来源与题单</h2>
+            <ProblemSources :sources="data.problem.sources" :limit="6" />
+          </div>
+
+          <div>
             <h2 class="mb-3 font-black">复习收获</h2>
             <div v-auto-animate>
               <div v-if="notedReviews.length === 0" class="rounded-box border border-dashed border-base-300 p-6 text-center text-base-content/60">

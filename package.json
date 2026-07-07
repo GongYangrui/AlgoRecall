@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "ci": "npm run typecheck && npm run test && npm run build",
     "import:leetcode": "node scripts/import-leetcode.mjs",
+    "sync:study-lists": "node scripts/sync-study-lists.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push"

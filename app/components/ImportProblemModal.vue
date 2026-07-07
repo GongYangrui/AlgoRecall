@@ -70,6 +70,7 @@ async function importQuestion(question: LeetcodeSearchResult) {
       body: {
         title: question.title,
         titleCn: question.titleCn,
+        titleSlug: question.titleSlug,
         frontendId: question.questionFrontendId,
         url: question.urlCn || question.urlEn,
         urlEn: question.urlEn,

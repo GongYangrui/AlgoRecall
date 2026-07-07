@@ -3,6 +3,7 @@ import { createError } from "h3";
 import { db } from "../../db";
 import { problems, reviews } from "../../db/schema";
 import { requireSession } from "../../utils/auth-session";
+import { attachProblemSources } from "../../utils/study-lists";
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
@@ -24,5 +25,6 @@ export default defineEventHandler(async (event) => {
     .orderBy(desc(reviews.reviewedAt))
     .limit(50);
 
-  return { problem, history };
+  const [problemWithSources] = await attachProblemSources(session.user.id, [problem]);
+  return { problem: problemWithSources, history };
 });

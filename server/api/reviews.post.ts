@@ -9,11 +9,14 @@ import type { ReviewResult } from "@shared/types";
 import { db } from "../db";
 import { problems, reviews } from "../db/schema";
 import { requireSession } from "../utils/auth-session";
+import { markStudyListProgressReviewed } from "../utils/study-lists";
 
 const reviewInput = z.object({
   problemId: z.string().min(1),
   result: z.enum(["easy", "hard", "solution", "mastered"]),
   note: z.string().optional().nullable(),
+  studyListSlug: z.string().optional().nullable(),
+  titleSlug: z.string().optional().nullable(),
 });
 
 export default defineEventHandler(async (event) => {
@@ -21,7 +24,7 @@ export default defineEventHandler(async (event) => {
   const parsed = reviewInput.safeParse(await readBody(event));
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: "Invalid review" });
 
-  const { problemId, result, note } = parsed.data;
+  const { problemId, result, note, studyListSlug, titleSlug } = parsed.data;
   const [problem] = await db
     .select()
     .from(problems)
@@ -68,6 +71,8 @@ export default defineEventHandler(async (event) => {
     })
     .where(and(eq(problems.userId, session.user.id), eq(problems.id, problemId)))
     .returning();
+
+  await markStudyListProgressReviewed(session.user.id, updatedProblem as typeof problem, { studyListSlug, titleSlug });
 
   return { review, problem: updatedProblem };
 });

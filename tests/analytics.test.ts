@@ -8,6 +8,7 @@ function problem(overrides: Partial<Problem>): Problem {
     userId: "u",
     title: "Two Sum",
     titleCn: "两数之和",
+    titleSlug: "two-sum",
     frontendId: "1",
     tagsCn: null,
     url: "https://leetcode.cn/problems/two-sum",

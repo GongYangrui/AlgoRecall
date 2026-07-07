@@ -11,6 +11,7 @@ import { requireSession } from "../../utils/auth-session";
 const problemInput = z.object({
   title: z.string().min(1),
   titleCn: z.string().optional().nullable(),
+  titleSlug: z.string().optional().nullable(),
   frontendId: z.string().optional().nullable(),
   url: z.string().optional().nullable(),
   urlEn: z.string().optional().nullable(),
@@ -42,7 +43,17 @@ export default defineEventHandler(async (event) => {
       const primaryUrl = item.urlEn || item.url || item.urlCn;
       if (!primaryUrl) continue;
 
-      if (item.frontendId) {
+      if (item.titleSlug) {
+        const existing = await db
+          .select()
+          .from(problems)
+          .where(and(eq(problems.userId, session.user.id), eq(problems.titleSlug, item.titleSlug)))
+          .limit(1);
+        if (existing.length > 0) {
+          duplicates.push(existing[0]);
+          continue;
+        }
+      } else if (item.frontendId) {
         const existing = await db
           .select()
           .from(problems)
@@ -59,6 +70,7 @@ export default defineEventHandler(async (event) => {
         userId: session.user.id,
         title: item.title,
         titleCn: item.titleCn || null,
+        titleSlug: item.titleSlug || null,
         frontendId: item.frontendId || null,
         url: primaryUrl,
         urlEn: item.urlEn || null,
@@ -97,7 +109,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Title and URL are required" });
   }
 
-  if (item.frontendId) {
+  if (item.titleSlug) {
+    const existing = await db
+      .select()
+      .from(problems)
+      .where(and(eq(problems.userId, session.user.id), eq(problems.titleSlug, item.titleSlug)))
+      .limit(1);
+    if (existing.length > 0) {
+      throw createError({ statusCode: 409, statusMessage: "already_exists", data: { problem: existing[0] } });
+    }
+  } else if (item.frontendId) {
     const existing = await db
       .select()
       .from(problems)
@@ -113,6 +134,7 @@ export default defineEventHandler(async (event) => {
     userId: session.user.id,
     title: item.title,
     titleCn: item.titleCn || null,
+    titleSlug: item.titleSlug || null,
     frontendId: item.frontendId || null,
     url: primaryUrl,
     urlEn: item.urlEn || null,

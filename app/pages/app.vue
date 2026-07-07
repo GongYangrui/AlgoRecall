@@ -2,8 +2,8 @@
 import { ExternalLink, Loader2 } from "@lucide/vue";
 import { displayProblemNumber, displayProblemTags, displayProblemTitle, resultLabel } from "@shared/problems";
 import { REVIEW_NOTE_MAX_LENGTH } from "@shared/reviews";
-import { getToday, isDue } from "@shared/schedule";
-import type { PaginatedResponse, Problem, ReviewResult } from "@shared/types";
+import { getToday } from "@shared/schedule";
+import type { Problem, ReviewResult, TodayNewStudyItem, TodayStudyPlan } from "@shared/types";
 
 definePageMeta({ middleware: "auth" });
 
@@ -16,17 +16,13 @@ const selectedReviewProblem = ref<Problem | null>(null);
 const selectedResult = ref<ReviewResult | null>(null);
 const reviewNote = ref("");
 const reviewModalOpen = ref(false);
+const startingNewItem = ref("");
 const requestFetch = useRequestFetch();
 
-const { data, pending, refresh } = await useAsyncData("today-problems", () =>
-  requestFetch<PaginatedResponse<Problem>>("/api/problems", {
-    query: { pageSize: 100 },
-  }),
-);
+const { data, pending, refresh } = await useAsyncData("today-study-plan", () => requestFetch<TodayStudyPlan>("/api/study-plan/today"));
 
-const dueProblems = computed(() =>
-  (data.value?.items || []).filter((problem) => isDue(problem, today) && !dismissed.value.has(problem.id)),
-);
+const dueProblems = computed(() => (data.value?.dueProblems || []).filter((problem) => !dismissed.value.has(problem.id)));
+const todayNewItems = computed(() => data.value?.newItems || []);
 
 const currentProblem = computed(() => dueProblems.value.find((problem) => problem.id === selectedId.value) || dueProblems.value[0] || null);
 
@@ -86,6 +82,20 @@ async function submitReview() {
   }
 }
 
+async function startNewStudyItem(item: TodayNewStudyItem) {
+  if (startingNewItem.value) return;
+  startingNewItem.value = `${item.studyListSlug}:${item.titleSlug}`;
+  try {
+    const problem = await $fetch<Problem>(`/api/study-lists/${item.studyListSlug}/items/${item.titleSlug}/start`, {
+      method: "POST",
+    });
+    await refresh();
+    await navigateTo(`/problems/${problem.id}`);
+  } finally {
+    startingNewItem.value = "";
+  }
+}
+
 function fullProblemTitle(problem: Problem) {
   const chineseTitle = displayProblemTitle(problem);
   return chineseTitle === problem.title ? chineseTitle : `${chineseTitle} / ${problem.title}`;
@@ -122,16 +132,14 @@ function reviewButtonClass(result: ReviewResult) {
       </div>
       <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
         <div class="stat">
-          <div class="stat-title">题库总数</div>
-          <div class="stat-value metric-number">{{ data?.total || 0 }}</div>
+          <div class="stat-title">今日新题</div>
+          <div class="stat-value metric-number">{{ todayNewItems.length }}</div>
         </div>
       </div>
       <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
         <div class="stat">
           <div class="stat-title">已掌握</div>
-          <div class="stat-value metric-number text-success">
-            {{ data?.items.filter((problem) => problem.status === "mastered").length || 0 }}
-          </div>
+          <div class="stat-value metric-number text-success">{{ data?.totals.mastered || 0 }}</div>
         </div>
       </div>
     </div>
@@ -141,17 +149,88 @@ function reviewButtonClass(result: ReviewResult) {
         <span class="loading loading-spinner loading-lg text-primary" />
       </div>
 
-      <div v-else-if="dueProblems.length === 0" class="hero min-h-96 rounded-box bg-base-100">
+      <div v-else-if="dueProblems.length === 0 && todayNewItems.length === 0" class="hero min-h-96 rounded-box bg-base-100">
         <div class="hero-content text-center">
           <div>
             <h2 class="text-3xl font-black">今天清空了</h2>
-            <p class="mt-3 text-base-content/65">可以去题库添加新题，或看看统计里的薄弱项。</p>
-            <NuxtLink to="/problems" class="btn btn-primary mt-6 transition duration-150 ease-out active:scale-[0.98]">管理题库</NuxtLink>
+            <p class="mt-3 text-base-content/65">可以去题库添加新题，或挑一套题单继续推进。</p>
+            <div class="mt-6 flex justify-center gap-2">
+              <NuxtLink to="/problems" class="btn btn-outline transition duration-150 ease-out active:scale-[0.98]">管理题库</NuxtLink>
+              <NuxtLink to="/study-lists" class="btn btn-primary transition duration-150 ease-out active:scale-[0.98]">浏览题单</NuxtLink>
+            </div>
           </div>
         </div>
       </div>
 
-      <div v-else class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
+      <div v-else class="grid gap-5">
+      <section v-if="todayNewItems.length" class="card bg-base-100 shadow-sm">
+        <div class="card-body p-0">
+          <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
+            <div>
+              <h2 class="font-black">今日新题</h2>
+              <p class="mt-1 text-sm text-base-content/55">题单只安排新题；开始后会进入统一复习计划。</p>
+            </div>
+            <span class="badge badge-primary badge-soft">{{ todayNewItems.length }} 题</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra table-sm min-w-[860px] table-fixed">
+              <colgroup>
+                <col class="w-[50%]" />
+                <col class="w-40" />
+                <col class="w-[22%]" />
+                <col class="w-28" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>题目</th>
+                  <th>难度</th>
+                  <th>来自题单</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody v-auto-animate>
+                <tr v-for="item in todayNewItems" :key="`${item.studyListSlug}-${item.titleSlug}`">
+                  <td>
+                    <div class="flex min-w-0 items-center gap-3">
+                      <div class="grid h-12 w-12 shrink-0 place-items-center rounded-box border border-base-300 bg-base-200 font-mono text-sm font-bold text-base-content/70">
+                        #{{ item.questionFrontendId }}
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <div class="truncate font-bold leading-6">{{ displayProblemTitle(item) }}</div>
+                        <div class="truncate text-sm text-base-content/55">{{ item.title }}</div>
+                        <div class="mt-1 flex min-w-0 flex-wrap gap-1">
+                          <span v-for="tag in displayProblemTags(item).slice(0, 4)" :key="tag" class="badge badge-ghost badge-sm">
+                            {{ tag }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><ProblemBadges :difficulty="item.difficulty" /></td>
+                  <td>
+                    <NuxtLink class="badge badge-ghost transition duration-150 ease-out hover:badge-primary" :to="`/study-lists/${item.studyListSlug}`">
+                      {{ item.studyListTitle }}
+                    </NuxtLink>
+                  </td>
+                  <th>
+                    <button
+                      class="btn btn-primary btn-soft btn-xs transition duration-150 ease-out active:scale-[0.96]"
+                      type="button"
+                      :disabled="Boolean(startingNewItem)"
+                      @click="startNewStudyItem(item)"
+                    >
+                      <Loader2 v-if="startingNewItem === `${item.studyListSlug}:${item.titleSlug}`" class="h-3.5 w-3.5 animate-spin" />
+                      开始
+                    </button>
+                  </th>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <div v-if="dueProblems.length" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body p-0">
           <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
@@ -203,6 +282,7 @@ function reviewButtonClass(result: ReviewResult) {
                             {{ tag }}
                           </span>
                         </div>
+                        <ProblemSources class="mt-1" :sources="problem.sources" :limit="2" />
                       </div>
                     </div>
                   </td>
@@ -238,6 +318,7 @@ function reviewButtonClass(result: ReviewResult) {
                 </div>
 
                 <StageRail :stage="currentProblem.stage" :status="currentProblem.status" />
+                <ProblemSources :sources="currentProblem.sources" :limit="3" />
 
                 <div class="flex flex-wrap gap-2">
                   <a v-if="currentProblem.urlCn" class="btn btn-outline btn-sm transition duration-150 ease-out active:scale-[0.98]" :href="currentProblem.urlCn" target="_blank" rel="noreferrer">
@@ -270,6 +351,7 @@ function reviewButtonClass(result: ReviewResult) {
           </div>
         </div>
       </aside>
+      </div>
 
       <div class="modal modal-middle" :class="{ 'modal-open': reviewModalOpen }" role="dialog" aria-modal="true">
         <div v-auto-animate class="modal-box">

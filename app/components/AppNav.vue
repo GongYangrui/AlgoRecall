@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, BookOpen, CalendarCheck, Import, LogOut, Menu, Sparkles } from "@lucide/vue";
+import { BarChart3, BookOpen, CalendarCheck, Import, ListChecks, LogOut, Menu, Sparkles } from "@lucide/vue";
 import { authClient } from "../utils/auth-client";
 
 const route = useRoute();
@@ -8,6 +8,7 @@ const importModal = ref<{ open: () => void } | null>(null);
 const links = [
   { href: "/app", label: "今日复习", icon: CalendarCheck },
   { href: "/problems", label: "题库", icon: BookOpen },
+  { href: "/study-lists", label: "题单", icon: ListChecks },
   { href: "/stats", label: "统计", icon: BarChart3 },
 ];
 

@@ -7,6 +7,7 @@ export type Problem = {
   userId: string;
   title: string;
   titleCn: string | null;
+  titleSlug: string | null;
   frontendId: string | null;
   tagsCn: string | null;
   url: string;
@@ -24,6 +25,7 @@ export type Problem = {
   reviewCount: number;
   createdAt: string;
   updatedAt: string;
+  sources?: ProblemSource[];
 };
 
 export type Review = {
@@ -55,6 +57,76 @@ export type LeetcodeQuestion = {
 export type LeetcodeSearchResult = LeetcodeQuestion & {
   imported: boolean;
   problemId: string | null;
+};
+
+export type StudyListMode = "follow_existing" | "restart_in_list";
+export type StudyListItemStatus = "not_started" | "planned" | "learned" | "covered" | "mastered";
+
+export type ProblemSource = {
+  studyListSlug: string | null;
+  title: string;
+  kind: "manual" | "study_list";
+  status?: StudyListItemStatus | string;
+  mode?: StudyListMode | string;
+};
+
+export type StudyListItemSnapshot = {
+  order: number;
+  titleSlug: string;
+};
+
+export type StudyListSnapshot = {
+  slug: string;
+  title: string;
+  description: string;
+  sourceUrl: string;
+  locale: "cn" | "en";
+  items: StudyListItemSnapshot[];
+};
+
+export type StudyListSummary = {
+  slug: string;
+  title: string;
+  description: string;
+  sourceUrl: string;
+  locale: "cn" | "en";
+  total: number;
+  enrolled: boolean;
+  dailyNewCount: number | null;
+  active: boolean;
+  completed: number;
+  percent: number;
+};
+
+export type StudyListQuestion = LeetcodeQuestion & {
+  order: number;
+  enrolled: boolean;
+  problem: Problem | null;
+  status: StudyListItemStatus | string;
+  mode: StudyListMode | string;
+  sources: ProblemSource[];
+};
+
+export type StudyListDetail = StudyListSummary & {
+  items: StudyListQuestion[];
+};
+
+export type TodayNewStudyItem = StudyListQuestion & {
+  studyListSlug: string;
+  studyListTitle: string;
+};
+
+export type TodayStudyPlan = {
+  today: string;
+  dueProblems: Problem[];
+  newItems: TodayNewStudyItem[];
+  totals: {
+    problems: number;
+    mastered: number;
+    due: number;
+    newItems: number;
+    dailyNewBudget: number;
+  };
 };
 
 export type PaginatedResponse<T> = {
