@@ -20,6 +20,7 @@ RUN adduser --system --uid 1001 nuxt
 
 COPY --from=builder --chown=nuxt:nodejs /app/.output ./.output
 COPY --from=builder --chown=nuxt:nodejs /app/data/leetcode_details.json ./data/leetcode_details.json
+COPY --from=builder --chown=nuxt:nodejs /app/data/study_lists.json ./data/study_lists.json
 COPY --from=builder --chown=nuxt:nodejs /app/drizzle ./drizzle
 COPY --from=deps --chown=nuxt:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nuxt:nodejs /app/package.json /app/package-lock.json ./
