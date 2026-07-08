@@ -25,4 +25,48 @@ describe("performance timer", () => {
     }
     expect(header).toMatch(/^auth;dur=\d+, progress_query;dur=\d+, total;dur=\d+$/);
   });
+
+  it("uses 100ms as the default slow request threshold", async () => {
+    const { getApiSlowRequestThresholdMs } = await import("../server/utils/performance");
+
+    expect(getApiSlowRequestThresholdMs({})).toBe(100);
+    expect(getApiSlowRequestThresholdMs({ API_SLOW_REQUEST_THRESHOLD_MS: "250" })).toBe(250);
+    expect(getApiSlowRequestThresholdMs({ API_SLOW_REQUEST_THRESHOLD_MS: "0" })).toBe(100);
+    expect(getApiSlowRequestThresholdMs({ API_SLOW_REQUEST_THRESHOLD_MS: "abc" })).toBe(100);
+  });
+
+  it("logs only slow successful API requests or server errors", async () => {
+    const { shouldLogApiRequestPerformance } = await import("../server/utils/performance");
+
+    expect(shouldLogApiRequestPerformance({
+      path: "/api/study-plan/today",
+      statusCode: 200,
+      durationMs: 99,
+      thresholdMs: 100,
+    })).toBe(false);
+    expect(shouldLogApiRequestPerformance({
+      path: "/api/study-plan/today",
+      statusCode: 200,
+      durationMs: 100,
+      thresholdMs: 100,
+    })).toBe(true);
+    expect(shouldLogApiRequestPerformance({
+      path: "/api/study-plan/today",
+      statusCode: 500,
+      durationMs: 10,
+      thresholdMs: 100,
+    })).toBe(true);
+    expect(shouldLogApiRequestPerformance({
+      path: "/api/study-plan/today",
+      statusCode: 401,
+      durationMs: 500,
+      thresholdMs: 100,
+    })).toBe(false);
+    expect(shouldLogApiRequestPerformance({
+      path: "/login",
+      statusCode: 200,
+      durationMs: 500,
+      thresholdMs: 100,
+    })).toBe(false);
+  });
 });

@@ -1,9 +1,10 @@
 import { performance as nodePerformance } from "node:perf_hooks";
 import { setHeader, type H3Event } from "h3";
 import { logPerformance } from "./logger";
-import { getRequestId } from "./log-context";
+import { getEventUserId, getRequestId } from "./log-context";
 
 export type PerformanceStageKind = "auth" | "db" | "io_cpu" | "app";
+export const DEFAULT_API_SLOW_REQUEST_THRESHOLD_MS = 100;
 
 export interface PerformanceStage {
   name: string;
@@ -91,5 +92,53 @@ export function logRequestPerformance(event: H3Event, options: {
     source: "server",
     operation: options.operation,
     metadata: { timing },
+  });
+}
+
+export function getApiSlowRequestThresholdMs(env: Record<string, string | undefined> = process.env) {
+  const parsed = Number(env.API_SLOW_REQUEST_THRESHOLD_MS);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_API_SLOW_REQUEST_THRESHOLD_MS;
+}
+
+export function normalizePerformanceRoute(value: string) {
+  return value.split("?")[0] || "/";
+}
+
+export function shouldLogApiRequestPerformance(input: {
+  path: string;
+  statusCode: number;
+  durationMs: number;
+  thresholdMs?: number;
+}) {
+  if (!input.path.startsWith("/api/")) return false;
+  if (input.statusCode >= 500) return true;
+
+  const isSuccessful = input.statusCode >= 200 && input.statusCode < 400;
+  return isSuccessful && input.durationMs >= (input.thresholdMs ?? DEFAULT_API_SLOW_REQUEST_THRESHOLD_MS);
+}
+
+export function logApiRequestPerformance(event: H3Event, options: {
+  route: string;
+  statusCode: number;
+  durationMs: number;
+  thresholdMs: number;
+}) {
+  const reason = options.statusCode >= 500 ? "server_error" : "slow_request";
+  logPerformance("server.request_slow", {
+    message: `${event.method} ${options.route} completed in ${options.durationMs}ms`,
+    requestId: getRequestId(event),
+    userId: getEventUserId(event),
+    method: event.method,
+    route: options.route,
+    statusCode: options.statusCode,
+    durationMs: options.durationMs,
+    source: "server",
+    operation: "server.request",
+    metadata: {
+      performance: {
+        thresholdMs: options.thresholdMs,
+        reason,
+      },
+    },
   });
 }
