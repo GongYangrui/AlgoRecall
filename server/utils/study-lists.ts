@@ -26,6 +26,7 @@ import type {
 import { db } from "../db";
 import { problems, studyListEnrollments, studyListItemProgress } from "../db/schema";
 import { getLeetcodeQuestionBySlug, getLeetcodeQuestionMapBySlug } from "./leetcode-index";
+import { measurePerformanceStage, type RequestPerformanceTimer } from "./performance";
 import { nowIso } from "./time";
 
 type DbClient = Pick<typeof db, "select" | "insert" | "update">;
@@ -448,25 +449,25 @@ export async function markStudyListProgressReviewed(
   }
 }
 
-export async function getStudyListDetail(userId: string, studyListSlug: string): Promise<StudyListDetail | null> {
-  const list = await getStudyList(studyListSlug);
+export async function getStudyListDetail(userId: string, studyListSlug: string, timer?: RequestPerformanceTimer): Promise<StudyListDetail | null> {
+  const list = await measurePerformanceStage(timer, "getStudyList", "io_cpu", () => getStudyList(studyListSlug));
   if (!list) return null;
 
-  const [enrollment] = await db
+  const [enrollment] = await measurePerformanceStage(timer, "enrollmentQuery", "db", () => db
     .select()
     .from(studyListEnrollments)
     .where(and(eq(studyListEnrollments.userId, userId), eq(studyListEnrollments.studyListSlug, studyListSlug)))
-    .limit(1);
-  const progressRows = await getProgressRows(userId, studyListSlug);
+    .limit(1));
+  const progressRows = await measurePerformanceStage(timer, "progressQuery", "db", () => getProgressRows(userId, studyListSlug));
   const progressBySlug = new Map(progressRows.map((row) => [row.titleSlug, row]));
-  const questionBySlug = await getLeetcodeQuestionMapBySlug();
-  const problemBySlug = await getUserProblemsByTitleSlug(userId, list.items.map((item) => item.titleSlug));
-  const sourcesByProblemId = await getProblemSources(
+  const questionBySlug = await measurePerformanceStage(timer, "leetcodeQuestionMap", "io_cpu", () => getLeetcodeQuestionMapBySlug());
+  const problemBySlug = await measurePerformanceStage(timer, "userProblemsQuery", "db", () => getUserProblemsByTitleSlug(userId, list.items.map((item) => item.titleSlug)));
+  const sourcesByProblemId = await measurePerformanceStage(timer, "problemSourcesQuery", "db", () => getProblemSources(
     userId,
     [...problemBySlug.values()].map((problem) => problem.id),
-  );
+  ));
 
-  const items: StudyListQuestion[] = list.items.map((item) => {
+  const items = await measurePerformanceStage(timer, "buildItems", "app", () => list.items.map((item) => {
     const question = questionBySlug.get(item.titleSlug) as LeetcodeQuestion | undefined;
     const progress = progressBySlug.get(item.titleSlug);
     const problem = progress?.problemId
@@ -484,7 +485,7 @@ export async function getStudyListDetail(userId: string, studyListSlug: string):
       mode,
       sources: problem ? sourcesByProblemId.get(problem.id) ?? [{ kind: "manual", studyListSlug: null, title: "手动加入" }] : [],
     };
-  });
+  }) satisfies StudyListQuestion[]);
   const progress = calculateStudyListProgress(items);
 
   return {

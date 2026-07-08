@@ -76,6 +76,19 @@ export function logInfo(
   console.info(json);
 }
 
+export function logPerformance(
+  eventName: string,
+  data: LogEntryData = {},
+) {
+  const entry = buildLogEntry("info", eventName, data, { appVersion: getAppVersion(), environment: getLogEnvironment() });
+  const json = JSON.stringify(entry);
+  console.info(json);
+
+  writeToDb(entry).catch((err) => {
+    console.error("failed_to_write_app_event", err);
+  });
+}
+
 export function logAudit(
   eventName: string,
   data: LogEntryData & { message: string },
