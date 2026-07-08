@@ -1,0 +1,1 @@
+ALTER TABLE "study_list_enrollments" ADD COLUMN "last_queued_on" text;

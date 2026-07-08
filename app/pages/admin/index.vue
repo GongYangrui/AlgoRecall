@@ -179,7 +179,7 @@ onMounted(fetchOverview);
             </div>
             <div class="card bg-base-100 shadow-sm">
               <div class="card-body">
-                <p class="text-sm text-base-content/50">今日开始新题</p>
+                <p class="text-sm text-base-content/50">今日入队题目</p>
                 <p class="text-3xl font-black">{{ overview.todayStartedItems }}</p>
               </div>
             </div>
@@ -229,7 +229,7 @@ onMounted(fetchOverview);
                   <h2 class="card-title">30 天趋势</h2>
                   <div class="flex flex-wrap gap-2 text-xs">
                     <span class="badge badge-info badge-sm">活跃</span>
-                    <span class="badge badge-primary badge-sm">新题</span>
+                    <span class="badge badge-primary badge-sm">入队</span>
                     <span class="badge badge-success badge-sm">复习</span>
                     <span class="badge badge-error badge-sm">错误</span>
                   </div>
@@ -240,7 +240,7 @@ onMounted(fetchOverview);
                       <tr>
                         <th>日期</th>
                         <th>活跃</th>
-                        <th>开始新题</th>
+                        <th>入队题目</th>
                         <th>复习</th>
                         <th>错误</th>
                       </tr>

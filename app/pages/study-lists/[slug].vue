@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { Check, ExternalLink, Loader2, RotateCcw } from "@lucide/vue";
+import { ExternalLink, Loader2 } from "@lucide/vue";
 import { displayProblemNumber, displayProblemTags, displayProblemTitle } from "@shared/problems";
-import { studyListItemStatusLabel, studyListModeLabel } from "@shared/study-lists";
-import type { Problem, StudyListDetail, StudyListMode, StudyListQuestion } from "@shared/types";
+import type { Problem, StudyListDetail, StudyListQuestion } from "@shared/types";
 
 definePageMeta({ middleware: "auth" });
 
@@ -10,10 +9,26 @@ const route = useRoute();
 const requestFetch = useRequestFetch();
 const slug = computed(() => String(route.params.slug));
 const dailyNewCount = ref(2);
-const startMode = ref<StudyListMode>("follow_existing");
 const startingList = ref(false);
 const startingItem = ref("");
-const updatingItem = ref("");
+const queueFeedback = ref<QueueFeedback | null>(null);
+
+type QueueFeedback = {
+  status: "success" | "error";
+  title: string;
+  message: string;
+  problemId?: string;
+};
+
+type RequestError = {
+  data?: {
+    message?: string;
+    statusMessage?: string;
+  };
+  message?: string;
+  statusCode?: number;
+  statusMessage?: string;
+};
 
 const { data, pending, refresh } = await useAsyncData(
   () => `study-list-${slug.value}`,
@@ -44,31 +59,37 @@ function problemLink(question: StudyListQuestion) {
   return question.problem ? `/problems/${question.problem.id}` : "";
 }
 
+function closeQueueFeedback() {
+  queueFeedback.value = null;
+}
+
+function queueErrorMessage(error: unknown) {
+  const requestError = error as RequestError;
+  if (requestError.statusCode === 401) return "登录状态已过期，请重新登录后再试。";
+  if (requestError.statusCode === 404) return "没有找到这道题，可能题单数据已经更新。";
+  return requestError.data?.message || requestError.data?.statusMessage || requestError.statusMessage || "加入队列失败，请稍后再试。";
+}
+
+async function refreshStudyList() {
+  const scrollY = import.meta.client ? window.scrollY : 0;
+  await refresh();
+  await nextTick();
+  if (import.meta.client) {
+    window.scrollTo({ top: scrollY });
+  }
+}
+
 async function startStudyList() {
   if (startingList.value) return;
   startingList.value = true;
   try {
     await $fetch(`/api/study-lists/${slug.value}/start`, {
       method: "POST",
-      body: { dailyNewCount: dailyNewCount.value, mode: startMode.value },
+      body: { dailyNewCount: dailyNewCount.value },
     });
-    await refresh();
+    await refreshStudyList();
   } finally {
     startingList.value = false;
-  }
-}
-
-async function updateMode(question: StudyListQuestion, mode: StudyListMode) {
-  if (updatingItem.value) return;
-  updatingItem.value = question.titleSlug;
-  try {
-    await $fetch(`/api/study-lists/${slug.value}/items/${question.titleSlug}`, {
-      method: "PATCH",
-      body: { mode },
-    });
-    await refresh();
-  } finally {
-    updatingItem.value = "";
   }
 }
 
@@ -80,7 +101,23 @@ async function startQuestion(question: StudyListQuestion) {
       method: "POST",
     });
     await refresh();
-    await navigateTo(`/problems/${problem.id}`);
+    queueFeedback.value = {
+      status: "success",
+      title: "已加入复习队列",
+      message: `${questionTitle(question)} 已加入你的题库和复习队列。`,
+      problemId: problem.id,
+    };
+    try {
+      await refreshStudyList();
+    } catch {
+      // The queue operation already succeeded. Keep the success feedback visible even if the refresh fails.
+    }
+  } catch (error) {
+    queueFeedback.value = {
+      status: "error",
+      title: "加入失败",
+      message: queueErrorMessage(error),
+    };
   } finally {
     startingItem.value = "";
   }
@@ -89,7 +126,7 @@ async function startQuestion(question: StudyListQuestion) {
 
 <template>
   <AppFrame>
-    <div v-if="pending" class="grid min-h-80 place-items-center">
+    <div v-if="pending && !data" class="grid min-h-80 place-items-center">
       <span class="loading loading-spinner loading-lg text-primary" />
     </div>
 
@@ -122,19 +159,19 @@ async function startQuestion(question: StudyListQuestion) {
         </div>
         <div class="stats bg-base-100 shadow-sm">
           <div class="stat">
-            <div class="stat-title">已覆盖</div>
+            <div class="stat-title">已入队</div>
             <div class="stat-value metric-number text-success">{{ data.completed }}</div>
           </div>
         </div>
         <div class="stats bg-base-100 shadow-sm">
           <div class="stat">
-            <div class="stat-title">完成率</div>
+            <div class="stat-title">入队率</div>
             <div class="stat-value metric-number text-primary">{{ data.percent }}%</div>
           </div>
         </div>
         <div class="stats bg-base-100 shadow-sm">
           <div class="stat">
-            <div class="stat-title">每日新题</div>
+            <div class="stat-title">每日加入</div>
             <div class="stat-value metric-number">{{ data.dailyNewCount ?? dailyNewCount }}</div>
           </div>
         </div>
@@ -144,31 +181,25 @@ async function startQuestion(question: StudyListQuestion) {
 
       <section v-if="!data.enrolled" class="card bg-base-100 shadow-sm">
         <div class="card-body">
-          <h2 class="card-title">开始这个题单</h2>
-          <p class="text-sm text-base-content/60">如果题目已经在你的题库中，可以选择沿用原进度，或只在这个题单里重新学一遍。</p>
-          <div class="mt-2 grid gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
-            <label class="select select-bordered flex items-center gap-2">
-              <span class="text-sm text-base-content/55">每日新题</span>
-              <select v-model.number="dailyNewCount">
-                <option :value="1">1</option>
-                <option :value="2">2</option>
-                <option :value="3">3</option>
-                <option :value="5">5</option>
-                <option :value="8">8</option>
-                <option :value="10">10</option>
-                <option :value="15">15</option>
-                <option :value="20">20</option>
-              </select>
-            </label>
-            <div class="join">
-              <button class="btn join-item flex-1" :class="{ 'btn-primary': startMode === 'follow_existing' }" type="button" @click="startMode = 'follow_existing'">依照原进度</button>
-              <button class="btn join-item flex-1" :class="{ 'btn-primary': startMode === 'restart_in_list' }" type="button" @click="startMode = 'restart_in_list'">题单内重学</button>
-            </div>
+          <h2 class="card-title">加入这个题单</h2>
+          <p class="text-sm text-base-content/60">每天按顺序把指定数量的题加入复习队列；已经在题库里的题只记录来源，不重复加入。</p>
+          <div class="mt-2 max-w-48">
+            <label class="label" for="daily-new-count">每日加入</label>
+            <select id="daily-new-count" v-model.number="dailyNewCount" class="select select-bordered w-full">
+              <option :value="1">1</option>
+              <option :value="2">2</option>
+              <option :value="3">3</option>
+              <option :value="5">5</option>
+              <option :value="8">8</option>
+              <option :value="10">10</option>
+              <option :value="15">15</option>
+              <option :value="20">20</option>
+            </select>
           </div>
           <div class="card-actions justify-end">
             <button class="btn btn-primary transition duration-150 ease-out active:scale-[0.98]" type="button" :disabled="startingList" @click="startStudyList">
               <Loader2 v-if="startingList" class="h-4 w-4 animate-spin" />
-              开始学习
+              加入题单
             </button>
           </div>
         </div>
@@ -183,17 +214,15 @@ async function startQuestion(question: StudyListQuestion) {
           <div class="overflow-x-auto">
             <table class="table table-zebra table-sm min-w-[1080px] table-fixed">
               <colgroup>
-                <col class="w-[35%]" />
+                <col class="w-[44%]" />
                 <col class="w-[15%]" />
-                <col class="w-[18%]" />
-                <col class="w-[18%]" />
-                <col class="w-[14%]" />
+                <col class="w-[25%]" />
+                <col class="w-[16%]" />
               </colgroup>
               <thead>
                 <tr>
                   <th>题目</th>
                   <th>难度</th>
-                  <th>题单状态</th>
                   <th>来源</th>
                   <th></th>
                 </tr>
@@ -226,48 +255,21 @@ async function startQuestion(question: StudyListQuestion) {
                   </td>
                   <td><ProblemBadges :difficulty="question.difficulty" /></td>
                   <td>
-                    <div class="grid gap-1">
-                      <span class="badge badge-soft" :class="{ 'badge-success': question.status === 'mastered' || question.status === 'covered' || question.status === 'learned', 'badge-warning': question.status === 'planned' }">
-                        {{ studyListItemStatusLabel(question.status) }}
-                      </span>
-                      <span class="text-xs text-base-content/50">{{ studyListModeLabel(question.mode) }}</span>
-                    </div>
-                  </td>
-                  <td>
                     <ProblemSources v-if="question.sources.length" :sources="question.sources" :limit="2" />
                     <span v-else class="text-sm text-base-content/45">尚未进入题库</span>
                   </td>
                   <th>
                     <div class="flex flex-wrap justify-end gap-1">
+                      <NuxtLink v-if="question.problem" class="btn btn-ghost btn-xs transition duration-150 ease-out active:scale-[0.96]" :to="problemLink(question)">查看</NuxtLink>
                       <button
-                        v-if="data.enrolled && question.mode !== 'restart_in_list'"
-                        class="btn btn-ghost btn-xs transition duration-150 ease-out active:scale-[0.96]"
-                        type="button"
-                        :disabled="Boolean(updatingItem)"
-                        @click="updateMode(question, 'restart_in_list')"
-                      >
-                        <RotateCcw class="h-3.5 w-3.5" />
-                        重学
-                      </button>
-                      <button
-                        v-if="data.enrolled && question.mode !== 'follow_existing'"
-                        class="btn btn-ghost btn-xs transition duration-150 ease-out active:scale-[0.96]"
-                        type="button"
-                        :disabled="Boolean(updatingItem)"
-                        @click="updateMode(question, 'follow_existing')"
-                      >
-                        <Check class="h-3.5 w-3.5" />
-                        沿用
-                      </button>
-                      <button
-                        v-if="data.enrolled && question.status !== 'covered' && question.status !== 'mastered' && question.status !== 'learned'"
+                        v-else-if="data.enrolled"
                         class="btn btn-primary btn-soft btn-xs transition duration-150 ease-out active:scale-[0.96]"
                         type="button"
                         :disabled="Boolean(startingItem)"
                         @click="startQuestion(question)"
                       >
                         <Loader2 v-if="startingItem === question.titleSlug" class="h-3.5 w-3.5 animate-spin" />
-                        开始
+                        加入队列
                       </button>
                     </div>
                   </th>
@@ -277,6 +279,32 @@ async function startQuestion(question: StudyListQuestion) {
           </div>
         </div>
       </section>
+    </div>
+    <div v-if="queueFeedback" class="modal modal-open" role="dialog" aria-modal="true">
+      <div class="modal-box">
+        <div
+          role="alert"
+          class="alert alert-soft"
+          :class="queueFeedback.status === 'success' ? 'alert-success' : 'alert-error'"
+        >
+          <div>
+            <h3 class="font-bold">{{ queueFeedback.title }}</h3>
+            <p class="text-sm">{{ queueFeedback.message }}</p>
+          </div>
+        </div>
+        <div class="modal-action">
+          <NuxtLink
+            v-if="queueFeedback.problemId"
+            class="btn btn-primary transition duration-150 ease-out active:scale-[0.98]"
+            :to="`/problems/${queueFeedback.problemId}`"
+            @click="closeQueueFeedback"
+          >
+            查看题目
+          </NuxtLink>
+          <button class="btn btn-outline transition duration-150 ease-out active:scale-[0.98]" type="button" @click="closeQueueFeedback">留在题单</button>
+        </div>
+      </div>
+      <button class="modal-backdrop" type="button" aria-label="关闭提示" @click="closeQueueFeedback" />
     </div>
   </AppFrame>
 </template>

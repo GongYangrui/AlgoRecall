@@ -10,7 +10,6 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const q = typeof query.q === "string" ? query.q.trim() : "";
   const difficulty = typeof query.difficulty === "string" ? query.difficulty : "";
-  const status = typeof query.status === "string" ? query.status : "";
   const page = Math.max(1, Number(query.page || 1));
   const pageSize = Math.min(100, Math.max(1, Number(query.pageSize || 50)));
 
@@ -25,7 +24,6 @@ export default defineEventHandler(async (event) => {
     }
   }
   if (difficulty) conditions = and(conditions, eq(problems.difficulty, difficulty))!;
-  if (status) conditions = and(conditions, eq(problems.status, status))!;
 
   const [totalRow] = await db.select({ count: count() }).from(problems).where(conditions);
   const items = await db
@@ -42,7 +40,7 @@ export default defineEventHandler(async (event) => {
     entityType: "page",
     entityId: "problems",
     route: "/api/problems",
-    metadata: { q, difficulty, status, page, pageSize },
+    metadata: { q, difficulty, page, pageSize },
   });
 
   return {

@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { randomUUID } from "node:crypto";
 import { db } from "../db";
 import { analyticsEvents } from "../db/schema";
@@ -31,7 +30,7 @@ function sanitize(value: unknown): unknown {
 }
 
 export function analyticsTimestamp(date = new Date()) {
-  return format(date, "yyyy-MM-dd HH:mm:ss");
+  return date.toISOString();
 }
 
 export async function trackAnalyticsEvent(data: {

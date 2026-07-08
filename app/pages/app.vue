@@ -3,7 +3,7 @@ import { ExternalLink, Loader2 } from "@lucide/vue";
 import { displayProblemNumber, displayProblemTags, displayProblemTitle, resultLabel } from "@shared/problems";
 import { REVIEW_NOTE_MAX_LENGTH } from "@shared/reviews";
 import { getToday } from "@shared/schedule";
-import type { Problem, ReviewResult, TodayNewStudyItem, TodayStudyPlan } from "@shared/types";
+import type { Problem, ReviewResult, StudyListQueueResult, TodayStudyPlan } from "@shared/types";
 
 definePageMeta({ middleware: "auth" });
 
@@ -16,13 +16,13 @@ const selectedReviewProblem = ref<Problem | null>(null);
 const selectedResult = ref<ReviewResult | null>(null);
 const reviewNote = ref("");
 const reviewModalOpen = ref(false);
-const startingNewItem = ref("");
+const queueingStudyList = ref("");
 const requestFetch = useRequestFetch();
 
 const { data, pending, refresh } = await useAsyncData("today-study-plan", () => requestFetch<TodayStudyPlan>("/api/study-plan/today"));
 
 const dueProblems = computed(() => (data.value?.dueProblems || []).filter((problem) => !dismissed.value.has(problem.id)));
-const todayNewItems = computed(() => data.value?.newItems || []);
+const extraStudyLists = computed(() => data.value?.extraStudyLists || []);
 
 const currentProblem = computed(() => dueProblems.value.find((problem) => problem.id === selectedId.value) || dueProblems.value[0] || null);
 
@@ -82,17 +82,14 @@ async function submitReview() {
   }
 }
 
-async function startNewStudyItem(item: TodayNewStudyItem) {
-  if (startingNewItem.value) return;
-  startingNewItem.value = `${item.studyListSlug}:${item.titleSlug}`;
+async function queueExtraStudyList(slug: string) {
+  if (queueingStudyList.value) return;
+  queueingStudyList.value = slug;
   try {
-    const problem = await $fetch<Problem>(`/api/study-lists/${item.studyListSlug}/items/${item.titleSlug}/start`, {
-      method: "POST",
-    });
+    await $fetch<StudyListQueueResult>(`/api/study-lists/${slug}/queue-next`, { method: "POST" });
     await refresh();
-    await navigateTo(`/problems/${problem.id}`);
   } finally {
-    startingNewItem.value = "";
+    queueingStudyList.value = "";
   }
 }
 
@@ -123,17 +120,11 @@ function reviewButtonClass(result: ReviewResult) {
       <NuxtLink to="/problems" class="btn btn-outline">打开题库</NuxtLink>
     </div>
 
-    <div v-auto-animate class="mb-5 grid gap-3 md:grid-cols-3">
+    <div v-auto-animate class="mb-5 grid gap-3 md:grid-cols-2">
       <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
         <div class="stat">
           <div class="stat-title">待复习</div>
           <div class="stat-value metric-number text-primary">{{ dueProblems.length }}</div>
-        </div>
-      </div>
-      <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
-        <div class="stat">
-          <div class="stat-title">今日新题</div>
-          <div class="stat-value metric-number">{{ todayNewItems.length }}</div>
         </div>
       </div>
       <div class="stats bg-base-100 shadow-sm transition duration-150 ease-out hover:-translate-y-0.5">
@@ -149,11 +140,27 @@ function reviewButtonClass(result: ReviewResult) {
         <span class="loading loading-spinner loading-lg text-primary" />
       </div>
 
-      <div v-else-if="dueProblems.length === 0 && todayNewItems.length === 0" class="hero min-h-96 rounded-box bg-base-100">
+      <div v-else-if="dueProblems.length === 0" class="hero min-h-96 rounded-box bg-base-100">
         <div class="hero-content text-center">
           <div>
             <h2 class="text-3xl font-black">今天清空了</h2>
-            <p class="mt-3 text-base-content/65">可以去题库添加新题，或挑一套题单继续推进。</p>
+            <p class="mt-3 text-base-content/65">复习队列已经没有到期题目。</p>
+            <div v-if="extraStudyLists.length" class="mt-6 grid gap-3">
+              <p class="text-sm font-semibold text-base-content/60">学有余力，可以从题单继续加入一批。</p>
+              <div class="flex flex-wrap justify-center gap-2">
+                <button
+                  v-for="list in extraStudyLists"
+                  :key="list.slug"
+                  class="btn btn-primary btn-soft transition duration-150 ease-out active:scale-[0.98]"
+                  type="button"
+                  :disabled="Boolean(queueingStudyList)"
+                  @click="queueExtraStudyList(list.slug)"
+                >
+                  <Loader2 v-if="queueingStudyList === list.slug" class="h-4 w-4 animate-spin" />
+                  {{ list.title }}，加入 {{ Math.min(list.dailyNewCount, list.remaining) }} 题
+                </button>
+              </div>
+            </div>
             <div class="mt-6 flex justify-center gap-2">
               <NuxtLink to="/problems" class="btn btn-outline transition duration-150 ease-out active:scale-[0.98]">管理题库</NuxtLink>
               <NuxtLink to="/study-lists" class="btn btn-primary transition duration-150 ease-out active:scale-[0.98]">浏览题单</NuxtLink>
@@ -163,73 +170,6 @@ function reviewButtonClass(result: ReviewResult) {
       </div>
 
       <div v-else class="grid gap-5">
-      <section v-if="todayNewItems.length" class="card bg-base-100 shadow-sm">
-        <div class="card-body p-0">
-          <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
-            <div>
-              <h2 class="font-black">今日新题</h2>
-              <p class="mt-1 text-sm text-base-content/55">题单只安排新题；开始后会进入统一复习计划。</p>
-            </div>
-            <span class="badge badge-primary badge-soft">{{ todayNewItems.length }} 题</span>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="table table-zebra table-sm min-w-[860px] table-fixed">
-              <colgroup>
-                <col class="w-[50%]" />
-                <col class="w-40" />
-                <col class="w-[22%]" />
-                <col class="w-28" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>题目</th>
-                  <th>难度</th>
-                  <th>来自题单</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody v-auto-animate>
-                <tr v-for="item in todayNewItems" :key="`${item.studyListSlug}-${item.titleSlug}`">
-                  <td>
-                    <div class="flex min-w-0 items-center gap-3">
-                      <div class="grid h-12 w-12 shrink-0 place-items-center rounded-box border border-base-300 bg-base-200 font-mono text-sm font-bold text-base-content/70">
-                        #{{ item.questionFrontendId }}
-                      </div>
-                      <div class="min-w-0 flex-1">
-                        <div class="truncate font-bold leading-6">{{ displayProblemTitle(item) }}</div>
-                        <div class="truncate text-sm text-base-content/55">{{ item.title }}</div>
-                        <div class="mt-1 flex min-w-0 flex-wrap gap-1">
-                          <span v-for="tag in displayProblemTags(item).slice(0, 4)" :key="tag" class="badge badge-ghost badge-sm">
-                            {{ tag }}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td><ProblemBadges :difficulty="item.difficulty" /></td>
-                  <td>
-                    <NuxtLink class="badge badge-ghost transition duration-150 ease-out hover:badge-primary" :to="`/study-lists/${item.studyListSlug}`">
-                      {{ item.studyListTitle }}
-                    </NuxtLink>
-                  </td>
-                  <th>
-                    <button
-                      class="btn btn-primary btn-soft btn-xs transition duration-150 ease-out active:scale-[0.96]"
-                      type="button"
-                      :disabled="Boolean(startingNewItem)"
-                      @click="startNewStudyItem(item)"
-                    >
-                      <Loader2 v-if="startingNewItem === `${item.studyListSlug}:${item.titleSlug}`" class="h-3.5 w-3.5 animate-spin" />
-                      开始
-                    </button>
-                  </th>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
       <div v-if="dueProblems.length" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body p-0">
@@ -240,15 +180,17 @@ function reviewButtonClass(result: ReviewResult) {
           <div class="overflow-x-auto">
             <table class="table table-zebra table-sm min-w-[860px] table-fixed">
               <colgroup>
-                <col class="w-[58%]" />
-                <col class="w-40" />
+                <col class="w-[46%]" />
+                <col class="w-32" />
+                <col class="w-[20%]" />
                 <col class="w-44" />
                 <col class="w-24" />
               </colgroup>
               <thead>
                 <tr>
                   <th>题目</th>
-                  <th>状态</th>
+                  <th>难度</th>
+                  <th>来源</th>
                   <th>记忆阶段</th>
                   <th></th>
                 </tr>
@@ -257,8 +199,8 @@ function reviewButtonClass(result: ReviewResult) {
                 <tr
                   v-for="problem in dueProblems"
                   :key="problem.id"
-                  class="cursor-pointer border-l-4 border-l-transparent transition duration-150 ease-out hover:bg-base-200/70"
-                  :class="{ 'border-l-primary bg-base-200': currentProblem?.id === problem.id }"
+                  class="cursor-pointer transition duration-150 ease-out hover:bg-base-200/70"
+                  :class="{ 'bg-base-200': currentProblem?.id === problem.id }"
                   @click="selectedId = problem.id"
                 >
                   <td>
@@ -282,12 +224,14 @@ function reviewButtonClass(result: ReviewResult) {
                             {{ tag }}
                           </span>
                         </div>
-                        <ProblemSources class="mt-1" :sources="problem.sources" :limit="2" />
                       </div>
                     </div>
                   </td>
                   <td>
-                    <ProblemBadges :difficulty="problem.difficulty" :status="problem.status" />
+                    <ProblemBadges :difficulty="problem.difficulty" />
+                  </td>
+                  <td>
+                    <ProblemSources :sources="problem.sources" :limit="2" />
                   </td>
                   <td>
                     <div class="w-36">

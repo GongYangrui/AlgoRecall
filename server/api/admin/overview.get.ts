@@ -1,4 +1,4 @@
-import { format, startOfDay, subDays } from "date-fns";
+import { startOfDay, subDays } from "date-fns";
 import { sql } from "drizzle-orm";
 import { db } from "../../db";
 import { analyticsEvents, appEvents, problems, reviews } from "../../db/schema";
@@ -7,8 +7,8 @@ import { requireAdminSession } from "../../utils/admin-session";
 
 export default defineEventHandler(async (event) => {
   await requireAdminSession(event);
-  const todayStart = format(startOfDay(new Date()), "yyyy-MM-dd HH:mm:ss");
-  const sevenDaysStart = format(startOfDay(subDays(new Date(), 6)), "yyyy-MM-dd HH:mm:ss");
+  const todayStart = startOfDay(new Date()).toISOString();
+  const sevenDaysStart = startOfDay(subDays(new Date(), 6)).toISOString();
 
   const [usersCount] = await db.select({ count: sql<number>`count(*)` }).from(user);
   const [problemsCount] = await db.select({ count: sql<number>`count(*)` }).from(problems);

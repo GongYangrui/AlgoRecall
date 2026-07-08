@@ -44,9 +44,9 @@ export function difficultyLabel(difficulty: string) {
 
 export function statusLabel(status: string) {
   const labels: Record<string, string> = {
-    new: "新题",
-    learning: "学习中",
-    reviewing: "复习中",
+    new: "未复习",
+    learning: "需巩固",
+    reviewing: "待复习",
     mastered: "已掌握",
   };
   return labels[status] ?? status;

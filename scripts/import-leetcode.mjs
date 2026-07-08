@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+/**
+ * LEGACY: imports LeetCode rows into the old local SQLite store.
+ *
+ * The current app reads `data/leetcode_details.json` directly and the
+ * PostgreSQL schema now stores timestamp columns as real timestamptz/date
+ * values. Do not use this script for the current Postgres-backed app.
+ */
 
 import fs from "node:fs";
 import path from "node:path";

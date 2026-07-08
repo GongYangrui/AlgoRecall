@@ -1,6 +1,10 @@
-export type Difficulty = "easy" | "medium" | "hard";
-export type ProblemStatus = "new" | "learning" | "reviewing" | "mastered";
-export type ReviewResult = "easy" | "hard" | "solution" | "mastered";
+export const problemDifficulties = ["easy", "medium", "hard"] as const;
+export const problemStatuses = ["new", "learning", "reviewing", "mastered"] as const;
+export const reviewResults = ["easy", "hard", "solution", "mastered"] as const;
+
+export type Difficulty = (typeof problemDifficulties)[number];
+export type ProblemStatus = (typeof problemStatuses)[number];
+export type ReviewResult = (typeof reviewResults)[number];
 
 export type Problem = {
   id: string;
@@ -98,6 +102,18 @@ export type StudyListSummary = {
   percent: number;
 };
 
+export type StudyListQueueOption = {
+  slug: string;
+  title: string;
+  dailyNewCount: number;
+  remaining: number;
+};
+
+export type StudyListQueueResult = StudyListQueueOption & {
+  queued: number;
+  skipped: number;
+};
+
 export type StudyListQuestion = LeetcodeQuestion & {
   order: number;
   enrolled: boolean;
@@ -111,21 +127,14 @@ export type StudyListDetail = StudyListSummary & {
   items: StudyListQuestion[];
 };
 
-export type TodayNewStudyItem = StudyListQuestion & {
-  studyListSlug: string;
-  studyListTitle: string;
-};
-
 export type TodayStudyPlan = {
   today: string;
   dueProblems: Problem[];
-  newItems: TodayNewStudyItem[];
+  extraStudyLists: StudyListQueueOption[];
   totals: {
     problems: number;
     mastered: number;
     due: number;
-    newItems: number;
-    dailyNewBudget: number;
   };
 };
 

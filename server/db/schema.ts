@@ -1,5 +1,9 @@
-import { index, integer, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { check, date, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
+
+const timestampString = (name: string) => timestamp(name, { withTimezone: true, mode: "string" });
+const dateString = (name: string) => date(name, { mode: "string" });
 
 export const problems = pgTable(
   "problems",
@@ -23,13 +27,19 @@ export const problems = pgTable(
     stage: integer("stage").notNull().default(0),
     lastResult: text("last_result"),
     wrongCount: integer("wrong_count").notNull().default(0),
-    nextReviewAt: text("next_review_at"),
-    lastReviewedAt: text("last_reviewed_at"),
+    nextReviewAt: dateString("next_review_at"),
+    lastReviewedAt: timestampString("last_reviewed_at"),
     reviewCount: integer("review_count").notNull().default(0),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    createdAt: timestampString("created_at").notNull(),
+    updatedAt: timestampString("updated_at").notNull(),
   },
   (table) => [
+    check("chk_problems_difficulty", sql`${table.difficulty} IN ('easy', 'medium', 'hard')`),
+    check("chk_problems_status", sql`${table.status} IN ('new', 'learning', 'reviewing', 'mastered')`),
+    check("chk_problems_last_result", sql`${table.lastResult} IS NULL OR ${table.lastResult} IN ('easy', 'hard', 'solution', 'mastered')`),
+    check("chk_problems_stage_range", sql`${table.stage} >= 0 AND ${table.stage} <= 6`),
+    check("chk_problems_wrong_count_nonnegative", sql`${table.wrongCount} >= 0`),
+    check("chk_problems_review_count_nonnegative", sql`${table.reviewCount} >= 0`),
     uniqueIndex("uq_problems_user_frontend").on(table.userId, table.frontendId),
     uniqueIndex("uq_problems_user_title_slug").on(table.userId, table.titleSlug),
     index("idx_problems_user_title_slug").on(table.userId, table.titleSlug),
@@ -48,14 +58,17 @@ export const reviews = pgTable(
     problemId: text("problem_id")
       .notNull()
       .references(() => problems.id, { onDelete: "cascade" }),
-    reviewedAt: text("reviewed_at").notNull(),
+    reviewedAt: timestampString("reviewed_at").notNull(),
     result: text("result").notNull(),
     previousStage: integer("previous_stage").notNull(),
     nextStage: integer("next_stage").notNull(),
-    nextReviewAt: text("next_review_at"),
+    nextReviewAt: dateString("next_review_at"),
     note: text("note"),
   },
   (table) => [
+    check("chk_reviews_result", sql`${table.result} IN ('easy', 'hard', 'solution', 'mastered')`),
+    check("chk_reviews_previous_stage_range", sql`${table.previousStage} >= 0 AND ${table.previousStage} <= 6`),
+    check("chk_reviews_next_stage_range", sql`${table.nextStage} >= 0 AND ${table.nextStage} <= 6`),
     index("idx_reviews_user_reviewed").on(table.userId, table.reviewedAt),
     index("idx_reviews_user_problem").on(table.userId, table.problemId, table.reviewedAt),
   ],
@@ -73,9 +86,10 @@ export const leetcodeQuestions = pgTable(
     tagsCn: text("tags_cn"),
     urlEn: text("url_en").notNull(),
     urlCn: text("url_cn").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    updatedAt: timestampString("updated_at").notNull(),
   },
   (table) => [
+    check("chk_leetcode_questions_difficulty", sql`${table.difficulty} IN ('easy', 'medium', 'hard')`),
     index("idx_leetcode_frontend_id").on(table.questionFrontendId),
     index("idx_leetcode_title").on(table.title),
     index("idx_leetcode_title_cn").on(table.titleCn),
@@ -92,10 +106,13 @@ export const studyListEnrollments = pgTable(
     studyListSlug: text("study_list_slug").notNull(),
     dailyNewCount: integer("daily_new_count").notNull().default(2),
     active: integer("active").notNull().default(1),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    lastQueuedOn: dateString("last_queued_on"),
+    createdAt: timestampString("created_at").notNull(),
+    updatedAt: timestampString("updated_at").notNull(),
   },
   (table) => [
+    check("chk_study_list_enrollments_daily_new_count", sql`${table.dailyNewCount} >= 0 AND ${table.dailyNewCount} <= 20`),
+    check("chk_study_list_enrollments_active", sql`${table.active} IN (0, 1)`),
     uniqueIndex("uq_study_list_enrollments_user_slug").on(table.userId, table.studyListSlug),
     index("idx_study_list_enrollments_user_active").on(table.userId, table.active),
   ],
@@ -114,11 +131,14 @@ export const studyListItemProgress = pgTable(
     order: integer("order").notNull(),
     mode: text("mode").notNull().default("follow_existing"),
     status: text("status").notNull().default("not_started"),
-    learnedAt: text("learned_at"),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    learnedAt: timestampString("learned_at"),
+    createdAt: timestampString("created_at").notNull(),
+    updatedAt: timestampString("updated_at").notNull(),
   },
   (table) => [
+    check("chk_study_list_item_progress_mode", sql`${table.mode} IN ('follow_existing', 'restart_in_list')`),
+    check("chk_study_list_item_progress_status", sql`${table.status} IN ('not_started', 'planned', 'learned', 'covered', 'mastered')`),
+    check("chk_study_list_item_progress_order_nonnegative", sql`${table.order} >= 0`),
     uniqueIndex("uq_study_list_item_progress_user_list_slug").on(table.userId, table.studyListSlug, table.titleSlug),
     index("idx_study_list_item_progress_user_problem").on(table.userId, table.problemId),
     index("idx_study_list_item_progress_user_status").on(table.userId, table.status),
@@ -129,7 +149,7 @@ export const appEvents = pgTable(
   "app_events",
   {
     id: text("id").primaryKey(),
-    timestamp: text("timestamp").notNull(),
+    timestamp: timestampString("timestamp").notNull(),
     level: text("level").notNull(),
     source: text("source").notNull().default("server"),
     event: text("event").notNull(),
@@ -148,6 +168,10 @@ export const appEvents = pgTable(
     metadata: text("metadata").default("{}"),
   },
   (table) => [
+    check("chk_app_events_level", sql`${table.level} IN ('error', 'warn', 'info', 'audit')`),
+    check("chk_app_events_source", sql`${table.source} IN ('server', 'client', 'system')`),
+    check("chk_app_events_status_code", sql`${table.statusCode} IS NULL OR (${table.statusCode} >= 100 AND ${table.statusCode} <= 599)`),
+    check("chk_app_events_duration_nonnegative", sql`${table.durationMs} IS NULL OR ${table.durationMs} >= 0`),
     index("idx_app_events_timestamp").on(table.timestamp),
     index("idx_app_events_level").on(table.level),
     index("idx_app_events_source").on(table.source),
@@ -162,7 +186,7 @@ export const analyticsEvents = pgTable(
   "analytics_events",
   {
     id: text("id").primaryKey(),
-    timestamp: text("timestamp").notNull(),
+    timestamp: timestampString("timestamp").notNull(),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

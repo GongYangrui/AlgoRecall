@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 /**
  * SQLite → PostgreSQL migration script for AlgoRecall.
+ * LEGACY: kept only for historical reference.
+ *
+ * The current schema intentionally allows clearing old business data and uses
+ * real timestamptz/date columns. This script targets the old SQLite shape and
+ * should not be used for new deployments without a dedicated update pass.
  *
  * Requirements:
  *   DATABASE_URL (Postgres) and SQLITE_PATH env vars must be set.

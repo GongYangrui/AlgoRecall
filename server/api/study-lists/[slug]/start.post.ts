@@ -1,15 +1,11 @@
 import { createError } from "h3";
 import { z } from "zod";
-import { studyListModes } from "@shared/study-lists";
 import { startStudyList } from "../../../utils/study-lists";
 import { requireSession } from "../../../utils/auth-session";
 import { trackAnalyticsEvent } from "../../../utils/analytics";
 import { setLogOperation } from "../../../utils/log-context";
 
-const startInput = z.object({
-  dailyNewCount: z.number().int().min(0).max(20).optional(),
-  mode: z.enum(studyListModes).optional(),
-});
+const startInput = z.object({ dailyNewCount: z.number().int().min(0).max(20).optional() }).passthrough();
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);

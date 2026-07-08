@@ -1,26 +1,11 @@
 <script setup lang="ts">
-import { ExternalLink, Loader2 } from "@lucide/vue";
+import { ExternalLink } from "@lucide/vue";
 import type { StudyListSummary } from "@shared/types";
 
 definePageMeta({ middleware: "auth" });
 
 const requestFetch = useRequestFetch();
-const starting = ref("");
-const { data, pending, refresh } = await useAsyncData("study-lists", () => requestFetch<StudyListSummary[]>("/api/study-lists"));
-
-async function startList(slug: string) {
-  if (starting.value) return;
-  starting.value = slug;
-  try {
-    await $fetch(`/api/study-lists/${slug}/start`, {
-      method: "POST",
-      body: { dailyNewCount: 2, mode: "follow_existing" },
-    });
-    await refresh();
-  } finally {
-    starting.value = "";
-  }
-}
+const { data, pending } = await useAsyncData("study-lists", () => requestFetch<StudyListSummary[]>("/api/study-lists"));
 </script>
 
 <template>
@@ -29,7 +14,7 @@ async function startList(slug: string) {
       <div>
         <div class="badge badge-primary badge-soft mb-3">Study Lists</div>
         <h1 class="text-3xl font-black md:text-4xl">精选题单</h1>
-        <p class="mt-2 text-base-content/65">选择一套题单，按顺序引入新题；复习仍进入同一套全局计划。</p>
+        <p class="mt-2 text-base-content/65">先查看题单内容，设置每日加入数量后再加入复习队列。</p>
       </div>
       <NuxtLink to="/app" class="btn btn-outline">今日学习</NuxtLink>
     </div>
@@ -61,11 +46,11 @@ async function startList(slug: string) {
               <div class="metric-number text-2xl font-black">{{ list.total }}</div>
             </div>
             <div class="rounded-box bg-base-200 p-3">
-              <div class="text-xs text-base-content/55">已覆盖</div>
+              <div class="text-xs text-base-content/55">已入队</div>
               <div class="metric-number text-2xl font-black">{{ list.completed }}</div>
             </div>
             <div class="rounded-box bg-base-200 p-3">
-              <div class="text-xs text-base-content/55">完成率</div>
+              <div class="text-xs text-base-content/55">入队率</div>
               <div class="metric-number text-2xl font-black text-primary">{{ list.percent }}%</div>
             </div>
           </div>
@@ -73,17 +58,7 @@ async function startList(slug: string) {
           <progress class="progress progress-primary mt-2" :value="list.completed" :max="list.total" />
 
           <div class="card-actions mt-4 justify-end">
-            <NuxtLink class="btn btn-outline transition duration-150 ease-out active:scale-[0.98]" :to="`/study-lists/${list.slug}`">查看题单</NuxtLink>
-            <button
-              v-if="!list.enrolled"
-              class="btn btn-primary transition duration-150 ease-out active:scale-[0.98]"
-              type="button"
-              :disabled="Boolean(starting)"
-              @click="startList(list.slug)"
-            >
-              <Loader2 v-if="starting === list.slug" class="h-4 w-4 animate-spin" />
-              开始学习
-            </button>
+            <NuxtLink class="btn btn-outline transition duration-150 ease-out active:scale-[0.98]" :to="`/study-lists/${list.slug}`">{{ list.enrolled ? "查看题单" : "查看并设置" }}</NuxtLink>
           </div>
         </div>
       </section>

@@ -7,7 +7,6 @@ definePageMeta({ middleware: "auth" });
 
 const q = ref("");
 const difficulty = ref("");
-const status = ref("");
 const requestFetch = useRequestFetch();
 const page = ref(1);
 const jumpPage = ref("1");
@@ -15,7 +14,6 @@ const pageSize = 20;
 const problemQuery = computed(() => ({
   q: q.value || undefined,
   difficulty: difficulty.value || undefined,
-  status: status.value || undefined,
   page: page.value,
   pageSize,
 }));
@@ -41,7 +39,7 @@ const visiblePages = computed(() => {
   return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 });
 
-watch([q, difficulty, status], () => {
+watch([q, difficulty], () => {
   page.value = 1;
 });
 
@@ -100,7 +98,7 @@ function jumpToPage() {
 
     <section class="card bg-base-100 shadow-sm">
       <div class="card-body gap-4">
-        <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_160px_160px]">
+        <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_160px]">
           <label class="input input-bordered flex items-center gap-2">
             <Search class="h-4 w-4 text-base-content/45" />
             <input v-model="q" type="search" class="grow" placeholder="题号、标题、标签" />
@@ -110,13 +108,6 @@ function jumpToPage() {
             <option value="easy">简单</option>
             <option value="medium">中等</option>
             <option value="hard">困难</option>
-          </select>
-          <select v-model="status" class="select select-bordered">
-            <option value="">全部状态</option>
-            <option value="new">新题</option>
-            <option value="learning">学习中</option>
-            <option value="reviewing">复习中</option>
-            <option value="mastered">已掌握</option>
           </select>
         </div>
 
@@ -132,15 +123,17 @@ function jumpToPage() {
           <div class="overflow-x-auto">
             <table class="table table-zebra table-sm min-w-[900px] table-fixed">
               <colgroup>
-                <col class="w-[44%]" />
-                <col class="w-[22%]" />
-                <col class="w-[20%]" />
+                <col class="w-[42%]" />
                 <col class="w-[14%]" />
+                <col class="w-[24%]" />
+                <col class="w-[14%]" />
+                <col class="w-[6%]" />
               </colgroup>
               <thead>
                 <tr>
                   <th>题目</th>
-                  <th>状态</th>
+                  <th>难度</th>
+                  <th>来源</th>
                   <th>下次复习</th>
                   <th></th>
                 </tr>
@@ -167,11 +160,11 @@ function jumpToPage() {
                             {{ tag }}
                           </span>
                         </div>
-                        <ProblemSources class="mt-1" :sources="problem.sources" :limit="2" />
                       </div>
                     </div>
                   </td>
-                  <td class="align-middle"><ProblemBadges :difficulty="problem.difficulty" :status="problem.status" /></td>
+                  <td class="align-middle"><ProblemBadges :difficulty="problem.difficulty" /></td>
+                  <td class="align-middle"><ProblemSources :sources="problem.sources" :limit="2" /></td>
                   <td class="align-middle text-sm text-base-content/60">{{ problem.nextReviewAt || "无需排期" }}</td>
                   <th class="text-center align-middle">
                     <NuxtLink class="btn btn-ghost btn-xs transition duration-150 ease-out active:scale-[0.96]" :to="`/problems/${problem.id}`">查看</NuxtLink>

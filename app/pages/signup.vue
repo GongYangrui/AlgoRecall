@@ -8,8 +8,21 @@ const password = ref("");
 const loading = ref(false);
 const error = ref("");
 
+const rules = computed(() => [
+  { label: "至少 8 个字符", met: password.value.length >= 8 },
+  { label: "包含大写字母 (A-Z)", met: /[A-Z]/.test(password.value) },
+  { label: "包含小写字母 (a-z)", met: /[a-z]/.test(password.value) },
+  { label: "包含数字 (0-9)", met: /[0-9]/.test(password.value) },
+]);
+
+const allRulesMet = computed(() => rules.value.every((r) => r.met));
+
 async function submit() {
   error.value = "";
+  if (!allRulesMet.value) {
+    error.value = "密码不符合要求";
+    return;
+  }
   loading.value = true;
   try {
     const result = await authClient.signUp.email({
@@ -75,12 +88,19 @@ async function submit() {
             id="signup-password"
             v-model="password"
             class="input w-full"
-            minlength="6"
+            minlength="8"
             required
             type="password"
             autocomplete="new-password"
-            placeholder="至少 6 位密码"
+            placeholder="至少 8 位，需包含大小写字母和数字"
           />
+
+          <ul class="mt-3 space-y-1 text-sm">
+            <li v-for="rule in rules" :key="rule.label" :class="rule.met ? 'text-success' : 'text-base-content/40'" class="flex items-center gap-1.5">
+              <span v-text="rule.met ? '✓' : '·'" />
+              {{ rule.label }}
+            </li>
+          </ul>
 
           <button class="btn btn-primary mt-4 w-full" type="submit" :disabled="loading">
             <Loader2 v-if="loading" class="h-4 w-4 animate-spin" />

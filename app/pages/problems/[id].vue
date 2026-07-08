@@ -118,7 +118,7 @@ async function deleteProblem() {
                 {{ data.problem.title }}
               </p>
               <div class="mt-3">
-                <ProblemBadges :difficulty="data.problem.difficulty" :status="data.problem.status" />
+                <ProblemBadges :difficulty="data.problem.difficulty" />
               </div>
             </div>
             <div class="flex flex-wrap gap-2">

@@ -3,9 +3,11 @@ import { normalizeClientErrorPayload } from "@shared/client-error";
 import { requireSession } from "../../utils/auth-session";
 import { getRequestDurationMs, getRequestId, getRequestSummary } from "../../utils/log-context";
 import { logError } from "../../utils/logger";
+import { assertRateLimit } from "../../utils/rate-limit";
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
+  assertRateLimit(event, { bucket: "client.error", key: session.user.id, limit: 20, windowMs: 60_000 });
   const payload = normalizeClientErrorPayload(await readBody(event));
   if (!payload) throw createError({ statusCode: 400, statusMessage: "Invalid client error payload" });
 

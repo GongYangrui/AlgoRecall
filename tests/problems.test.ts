@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { matchesLeetcodeQuery, parseTags } from "../shared/problems";
-import type { LeetcodeQuestion } from "../shared/types";
+import { problemDifficulties, problemStatuses, reviewResults, type LeetcodeQuestion } from "../shared/types";
 
 const question: LeetcodeQuestion = {
   questionFrontendId: "1",
@@ -26,5 +26,11 @@ describe("problem helpers", () => {
     expect(matchesLeetcodeQuery(question, "两数")).toBe(true);
     expect(matchesLeetcodeQuery(question, "哈希")).toBe(true);
     expect(matchesLeetcodeQuery(question, "binary tree")).toBe(false);
+  });
+
+  it("keeps shared enum values aligned with backend constraints", () => {
+    expect([...problemDifficulties]).toEqual(["easy", "medium", "hard"]);
+    expect([...problemStatuses]).toEqual(["new", "learning", "reviewing", "mastered"]);
+    expect([...reviewResults]).toEqual(["easy", "hard", "solution", "mastered"]);
   });
 });

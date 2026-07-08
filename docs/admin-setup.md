@@ -30,7 +30,7 @@ node scripts/promote-admin.mjs user@example.com
 
 登录 admin 用户后访问 `/admin`：
 
-- **运营总览**：今日活跃用户、近 7 日活跃用户、今日开始新题、今日复习提交、30 天趋势。
+- **运营总览**：今日活跃用户、近 7 日活跃用户、今日入队题目、今日复习提交、30 天趋势。
 - **稳定性总览**：24h 错误数、数据库状态、app uptime、最近错误。
 - **错误日志**：按 level / source / event / route / statusCode / requestId / version / 时间范围 / 关键词过滤，点击展开查看 stack trace。
 - **诊断包**：日志详情可以复制精简 JSON，适合直接粘贴给排查者定位问题。
@@ -38,7 +38,7 @@ node scripts/promote-admin.mjs user@example.com
 统计口径：
 
 - 活跃用户来自 `analytics_events`，按 `user_id` 去重。
-- “今日开始新题”只统计 `study_item_started`，即用户从题单/今日计划点击开始一道新题。
+- “今日入队题目”统计题单题目进入复习队列的相关事件。
 - “今日复习提交”来自 `reviews`。
 - 错误日志来自 `app_events`，不与行为统计混用。
 

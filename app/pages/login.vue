@@ -7,6 +7,49 @@ const password = ref("");
 const loading = ref(false);
 const error = ref("");
 
+type LoginError = {
+  code?: string;
+  message?: string;
+  status?: number;
+  error?: {
+    code?: string;
+    message?: string;
+  };
+};
+
+const invalidEmailMessage = "请输入有效的邮箱地址。";
+const invalidCredentialsMessage = "邮箱或密码错误。";
+
+const loginErrorMessages: Record<string, string> = {
+  INVALID_EMAIL: invalidEmailMessage,
+  INVALID_EMAIL_OR_PASSWORD: invalidCredentialsMessage,
+};
+
+function getLoginErrorMessage(authError: LoginError): string {
+  const code = authError.error?.code || authError.code;
+  const localizedCodeMessage = code ? loginErrorMessages[code] : undefined;
+  if (localizedCodeMessage) {
+    return localizedCodeMessage;
+  }
+
+  const message = authError.error?.message || authError.message;
+  if (message === "Invalid email") {
+    return invalidEmailMessage;
+  }
+  if (message === "Invalid email or password") {
+    return invalidCredentialsMessage;
+  }
+
+  if (authError.status === 401) {
+    return invalidCredentialsMessage;
+  }
+  if (authError.status === 429) {
+    return "登录尝试过于频繁，请稍后再试。";
+  }
+
+  return "登录失败，请检查邮箱和密码。";
+}
+
 async function submit() {
   error.value = "";
   loading.value = true;
@@ -16,7 +59,7 @@ async function submit() {
       password: password.value,
     });
     if (result.error) {
-      error.value = result.error.message || "登录失败，请检查邮箱和密码。";
+      error.value = getLoginErrorMessage(result.error);
       return;
     }
     await navigateTo("/app");

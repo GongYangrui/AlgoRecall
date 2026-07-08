@@ -8,6 +8,9 @@ import { requireAdminSession } from "../../utils/admin-session";
 import { setLogOperation } from "../../utils/log-context";
 import type { AdminLogEntry } from "@shared/types/admin";
 
+const DEFAULT_LOOKBACK_DAYS = 7;
+const MAX_PAGE = 1000;
+
 function parseMetadata(value: string | null): Record<string, unknown> | undefined {
   if (!value) return undefined;
   try {
@@ -23,7 +26,7 @@ export default defineEventHandler(async (event): Promise<{ items: AdminLogEntry[
   setLogOperation(event, "admin.logs.query");
 
   const query = getQuery(event);
-  const page = Math.max(1, Number(query.page || 1));
+  const page = Math.min(MAX_PAGE, Math.max(1, Number(query.page || 1)));
   const pageSize = Math.min(100, Math.max(1, Number(query.pageSize || 20)));
 
   const q = typeof query.q === "string" ? query.q.trim().slice(0, 100) : "";
@@ -47,7 +50,9 @@ export default defineEventHandler(async (event): Promise<{ items: AdminLogEntry[
   let to: string;
   try {
     parsedStatusCode = parseAdminLogStatusCode(statusCode);
-    from = normalizeAdminLogDateTime(typeof query.from === "string" ? query.from.trim() : "", "from");
+    const rawFrom = typeof query.from === "string" ? query.from.trim() : "";
+    from = rawFrom || new Date(Date.now() - DEFAULT_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    if (rawFrom) from = normalizeAdminLogDateTime(rawFrom, "from");
     to = normalizeAdminLogDateTime(typeof query.to === "string" ? query.to.trim() : "", "to");
   } catch (error) {
     throw createError({ statusCode: 400, statusMessage: error instanceof Error ? error.message : "Invalid log filter" });

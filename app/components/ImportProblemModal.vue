@@ -57,6 +57,14 @@ function markQuestionImported(questionFrontendId: string, problemId: string | nu
   );
 }
 
+async function refreshAfterProblemImport() {
+  try {
+    await refreshNuxtData();
+  } catch (error) {
+    console.error("Failed to refresh problem data after import", error);
+  }
+}
+
 async function importQuestion(question: LeetcodeSearchResult) {
   if (question.imported || isQuestionImporting(question.questionFrontendId)) return;
 
@@ -82,14 +90,13 @@ async function importQuestion(question: LeetcodeSearchResult) {
     });
     markQuestionImported(question.questionFrontendId, problem.id);
     importSuccess.value = `已加入：${displayQuestionTitle(question)}`;
-    void refreshNuxtData(["problems", "today-problems", "stats-summary"]).catch((error) => {
-      console.error("Failed to refresh problem data after import", error);
-    });
+    await refreshAfterProblemImport();
   } catch (error) {
     const fetchError = error as { name?: string; statusCode?: number; statusMessage?: string; data?: { statusMessage?: string; data?: { problem?: Problem } } };
     if (fetchError.statusCode === 409 || fetchError.statusMessage === "already_exists" || fetchError.data?.statusMessage === "already_exists") {
       markQuestionImported(question.questionFrontendId, fetchError.data?.data?.problem?.id ?? null);
       importSuccess.value = `题库里已经有：${displayQuestionTitle(question)}`;
+      await refreshAfterProblemImport();
       return;
     }
 

@@ -14,7 +14,6 @@ export default defineEventHandler(async (event): Promise<{ items: AdminDailyMetr
 
   const today = startOfDay(new Date());
   const firstDay = startOfDay(subDays(today, 29));
-  const fromLocal = format(firstDay, "yyyy-MM-dd HH:mm:ss");
   const fromIso = firstDay.toISOString();
 
   const days = Array.from({ length: 30 }, (_, index) => dateKey(subDays(today, 29 - index)));
@@ -26,14 +25,14 @@ export default defineEventHandler(async (event): Promise<{ items: AdminDailyMetr
       count(DISTINCT ${analyticsEvents.userId}) AS active_users,
       count(*) FILTER (WHERE ${analyticsEvents.event} = 'study_item_started') AS started_items
     FROM ${analyticsEvents}
-    WHERE ${analyticsEvents.timestamp} >= ${fromLocal}
+    WHERE ${analyticsEvents.timestamp} >= ${fromIso}
     GROUP BY 1
   `);
 
   const reviewRows = await db.execute(sql`
     SELECT substr(${reviews.reviewedAt}, 1, 10) AS date, count(*) AS reviews
     FROM ${reviews}
-    WHERE ${reviews.reviewedAt} >= ${fromLocal}
+    WHERE ${reviews.reviewedAt} >= ${fromIso}
     GROUP BY 1
   `);
 

@@ -180,10 +180,9 @@ cmd_up() {
   info "Building Docker image..."
   $COMPOSE build "$APP_SERVICE"
 
-  info "Starting database services..."
-  $COMPOSE up -d postgres redis
+  info "Starting database service..."
+  $COMPOSE up -d postgres
   wait_for_service_healthy postgres 90
-  wait_for_service_healthy redis 60
 
   run_migrations
 
