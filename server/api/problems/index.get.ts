@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
   let conditions = eq(problems.userId, session.user.id);
   if (!search.tooShort) {
-    const searchText = sql`lower(concat_ws(' ', ${problems.title}, ${problems.frontendId}, ${problems.tags}, ${problems.url}, ${problems.titleCn}, ${problems.urlEn}, ${problems.urlCn}))`;
+    const searchText = sql`lower(coalesce(${problems.title}, '') || ' ' || coalesce(${problems.frontendId}, '') || ' ' || coalesce(${problems.tags}, '') || ' ' || coalesce(${problems.url}, '') || ' ' || coalesce(${problems.titleCn}, '') || ' ' || coalesce(${problems.urlEn}, '') || ' ' || coalesce(${problems.urlCn}, ''))`;
     for (const word of search.words) {
       conditions = and(
         conditions,

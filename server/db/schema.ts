@@ -48,7 +48,7 @@ export const problems = pgTable(
     index("idx_problems_user_status").on(table.userId, table.status),
     index("idx_problems_search_trgm").using(
       "gin",
-      sql`lower(concat_ws(' ', ${table.title}, ${table.frontendId}, ${table.tags}, ${table.url}, ${table.titleCn}, ${table.urlEn}, ${table.urlCn})) gin_trgm_ops`,
+      sql`lower(coalesce(${table.title}, '') || ' ' || coalesce(${table.frontendId}, '') || ' ' || coalesce(${table.tags}, '') || ' ' || coalesce(${table.url}, '') || ' ' || coalesce(${table.titleCn}, '') || ' ' || coalesce(${table.urlEn}, '') || ' ' || coalesce(${table.urlCn}, '')) gin_trgm_ops`,
     ),
   ],
 );
