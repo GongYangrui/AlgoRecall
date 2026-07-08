@@ -21,7 +21,7 @@ export default defineEventHandler(async (event): Promise<{ items: AdminDailyMetr
 
   const analyticsRows = await db.execute(sql`
     SELECT
-      substr(${analyticsEvents.timestamp}, 1, 10) AS date,
+      to_char(${analyticsEvents.timestamp} AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
       count(DISTINCT ${analyticsEvents.userId}) AS active_users,
       count(*) FILTER (WHERE ${analyticsEvents.event} = 'study_item_started') AS started_items
     FROM ${analyticsEvents}
@@ -30,14 +30,14 @@ export default defineEventHandler(async (event): Promise<{ items: AdminDailyMetr
   `);
 
   const reviewRows = await db.execute(sql`
-    SELECT substr(${reviews.reviewedAt}, 1, 10) AS date, count(*) AS reviews
+    SELECT to_char(${reviews.reviewedAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date, count(*) AS reviews
     FROM ${reviews}
     WHERE ${reviews.reviewedAt} >= ${fromIso}
     GROUP BY 1
   `);
 
   const errorRows = await db.execute(sql`
-    SELECT substr(${appEvents.timestamp}, 1, 10) AS date, count(*) AS errors
+    SELECT to_char(${appEvents.timestamp} AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date, count(*) AS errors
     FROM ${appEvents}
     WHERE ${appEvents.level} = 'error' AND ${appEvents.timestamp} >= ${fromIso}
     GROUP BY 1
