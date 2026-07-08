@@ -167,7 +167,7 @@ cleanup_logs() {
 
 run_migrations() {
   info "Running database migrations..."
-  $COMPOSE run --rm --no-deps "$APP_SERVICE" npm run db:migrate
+  $COMPOSE run --rm --no-deps "$APP_SERVICE" node scripts/run-migrations.mjs
   green "Migrations applied"
 }
 
