@@ -1,7 +1,7 @@
 import { eachDayOfInterval, format, subDays, subMonths } from "date-fns";
 import { parseTags } from "./problems";
 import { isDue } from "./schedule";
-import type { Problem, Review, ReviewResult, ReviewTrendDay, StatsSummary, WeakTag } from "./types";
+import type { Problem, Review, ReviewResult, ReviewTrendDay, StatsAttentionProblem, StatsProblem, StatsReviewCount, StatsSummary, WeakTag } from "./types";
 
 const EMPTY_RESULTS: Record<ReviewResult, number> = {
   easy: 0,
@@ -11,6 +11,10 @@ const EMPTY_RESULTS: Record<ReviewResult, number> = {
 };
 
 export function buildStatsSummary(problems: Problem[], reviews: Pick<Review, "result" | "reviewedAt">[], today: string): StatsSummary {
+  return buildStatsSummaryFromAggregates(problems, buildReviewCounts(reviews), today);
+}
+
+export function buildStatsSummaryFromAggregates(problems: StatsProblem[], reviewCounts: StatsReviewCount[], today: string): StatsSummary {
   const byDifficulty: Record<string, number> = {};
   const byResult = { ...EMPTY_RESULTS };
 
@@ -18,9 +22,9 @@ export function buildStatsSummary(problems: Problem[], reviews: Pick<Review, "re
     byDifficulty[problem.difficulty] = (byDifficulty[problem.difficulty] ?? 0) + 1;
   }
 
-  for (const review of reviews) {
-    if (review.result in byResult) {
-      byResult[review.result] += 1;
+  for (const reviewCount of reviewCounts) {
+    if (reviewCount.result in byResult) {
+      byResult[reviewCount.result as ReviewResult] += reviewCount.count;
     }
   }
 
@@ -37,14 +41,47 @@ export function buildStatsSummary(problems: Problem[], reviews: Pick<Review, "re
     masteryRate: total === 0 ? 0 : Math.round((mastered / total) * 100),
     byDifficulty,
     byResult,
-    reviewHeatmap: buildReviewHeatmap(reviews, today),
-    reviewTrend30d: buildReviewTrend(reviews, today),
+    reviewHeatmap: buildReviewHeatmap(reviewCounts, today),
+    reviewTrend30d: buildReviewTrend(reviewCounts, today),
     stageDistribution: buildStageDistribution(problems),
     weakTags: buildWeakTags(problems),
     attention: problems
       .filter((problem) => problem.status !== "mastered")
       .toSorted((a, b) => b.wrongCount - a.wrongCount || a.stage - b.stage)
-      .slice(0, 6),
+      .slice(0, 6)
+      .map(toAttentionProblem),
+  };
+}
+
+function buildReviewCounts(reviews: Pick<Review, "result" | "reviewedAt">[]): StatsReviewCount[] {
+  const counts = new Map<string, StatsReviewCount>();
+
+  for (const review of reviews) {
+    const date = toDateKey(review.reviewedAt);
+    const key = `${date}:${review.result}`;
+    const existing = counts.get(key) || { date, result: review.result, count: 0 };
+    existing.count += 1;
+    counts.set(key, existing);
+  }
+
+  return Array.from(counts.values());
+}
+
+function toAttentionProblem(problem: StatsProblem): StatsAttentionProblem {
+  return {
+    id: problem.id,
+    title: problem.title,
+    titleCn: problem.titleCn,
+    titleSlug: problem.titleSlug,
+    frontendId: problem.frontendId,
+    difficulty: problem.difficulty,
+    tagsCn: problem.tagsCn,
+    tags: problem.tags,
+    status: problem.status,
+    stage: problem.stage,
+    wrongCount: problem.wrongCount,
+    nextReviewAt: problem.nextReviewAt,
+    reviewCount: problem.reviewCount,
   };
 }
 
@@ -59,14 +96,14 @@ function buildDayRange(start: string, end: string) {
   }).map((day) => format(day, "yyyy-MM-dd"));
 }
 
-function buildReviewHeatmap(reviews: Pick<Review, "result" | "reviewedAt">[], today: string) {
+function buildReviewHeatmap(reviewCounts: StatsReviewCount[], today: string) {
   const start = format(subMonths(new Date(`${today}T00:00:00`), 6), "yyyy-MM-dd");
   const counts = new Map<string, number>();
 
-  for (const review of reviews) {
-    const date = toDateKey(review.reviewedAt);
+  for (const reviewCount of reviewCounts) {
+    const date = reviewCount.date;
     if (date >= start && date <= today) {
-      counts.set(date, (counts.get(date) || 0) + 1);
+      counts.set(date, (counts.get(date) || 0) + reviewCount.count);
     }
   }
 
@@ -76,7 +113,7 @@ function buildReviewHeatmap(reviews: Pick<Review, "result" | "reviewedAt">[], to
   }));
 }
 
-function buildReviewTrend(reviews: Pick<Review, "result" | "reviewedAt">[], today: string) {
+function buildReviewTrend(reviewCounts: StatsReviewCount[], today: string) {
   const start = format(subDays(new Date(`${today}T00:00:00`), 29), "yyyy-MM-dd");
   const buckets = new Map<string, ReviewTrendDay>();
 
@@ -91,21 +128,20 @@ function buildReviewTrend(reviews: Pick<Review, "result" | "reviewedAt">[], toda
     });
   }
 
-  for (const review of reviews) {
-    const date = toDateKey(review.reviewedAt);
-    const bucket = buckets.get(date);
+  for (const reviewCount of reviewCounts) {
+    const bucket = buckets.get(reviewCount.date);
     if (!bucket) continue;
 
-    bucket.total += 1;
-    if (review.result in EMPTY_RESULTS) {
-      bucket[review.result] += 1;
+    bucket.total += reviewCount.count;
+    if (reviewCount.result in EMPTY_RESULTS) {
+      bucket[reviewCount.result as ReviewResult] += reviewCount.count;
     }
   }
 
   return Array.from(buckets.values());
 }
 
-function buildStageDistribution(problems: Problem[]) {
+function buildStageDistribution(problems: Pick<StatsProblem, "stage">[]) {
   const counts = Array.from({ length: 7 }, (_, stage) => ({
     stage,
     count: 0,
@@ -120,7 +156,7 @@ function buildStageDistribution(problems: Problem[]) {
   return counts;
 }
 
-function buildWeakTags(problems: Problem[]): WeakTag[] {
+function buildWeakTags(problems: Pick<StatsProblem, "status" | "wrongCount" | "tags" | "tagsCn">[]): WeakTag[] {
   const tags = new Map<string, WeakTag>();
 
   for (const problem of problems) {

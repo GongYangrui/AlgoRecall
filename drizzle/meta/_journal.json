@@ -64,6 +64,13 @@
       "when": 1783523000000,
       "tag": "0008_clear_business_data_and_fix_time_types",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783526600000,
+      "tag": "0009_fast_problem_queries",
+      "breakpoints": true
     }
   ]
 }

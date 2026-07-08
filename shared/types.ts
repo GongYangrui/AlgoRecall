@@ -170,6 +170,31 @@ export type WeakTag = {
   count: number;
 };
 
+export type StatsProblem = Pick<
+  Problem,
+  | "id"
+  | "title"
+  | "titleCn"
+  | "titleSlug"
+  | "frontendId"
+  | "difficulty"
+  | "tagsCn"
+  | "tags"
+  | "status"
+  | "stage"
+  | "wrongCount"
+  | "nextReviewAt"
+  | "reviewCount"
+>;
+
+export type StatsAttentionProblem = StatsProblem;
+
+export type StatsReviewCount = {
+  date: string;
+  result: ReviewResult | string;
+  count: number;
+};
+
 export type StatsSummary = {
   total: number;
   due: number;
@@ -184,5 +209,5 @@ export type StatsSummary = {
   reviewTrend30d: ReviewTrendDay[];
   stageDistribution: StageDistributionBucket[];
   weakTags: WeakTag[];
-  attention: Problem[];
+  attention: StatsAttentionProblem[];
 };

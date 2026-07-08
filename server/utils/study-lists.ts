@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import {
   STUDY_LIST_DEFAULT_DAILY_NEW,
@@ -10,7 +10,7 @@ import {
   selectStudyListQueueBatch,
   type StudyListItemStatus,
 } from "@shared/study-lists";
-import { getToday, isDue } from "@shared/schedule";
+import { getToday } from "@shared/schedule";
 import type {
   LeetcodeQuestion,
   Problem,
@@ -26,10 +26,12 @@ import type {
 import { db } from "../db";
 import { problems, studyListEnrollments, studyListItemProgress } from "../db/schema";
 import { getLeetcodeQuestionBySlug, getLeetcodeQuestionMapBySlug } from "./leetcode-index";
+import { logError } from "./logger";
 import { measurePerformanceStage, type RequestPerformanceTimer } from "./performance";
 import { nowIso } from "./time";
 
 type DbClient = Pick<typeof db, "select" | "insert" | "update">;
+type ProblemSourceLookup = Pick<Problem, "id" | "titleSlug">;
 
 let cachedStudyLists: StudyListSnapshot[] | null = null;
 
@@ -70,23 +72,19 @@ function legacyProblemStudyStatus(problem: Problem | null, mode: string): StudyL
   return inferStudyListStatusFromProblem(problem, mode);
 }
 
-export async function getProblemSources(userId: string, problemIds: string[]) {
-  const uniqueProblemIds = [...new Set(problemIds.filter(Boolean))];
+export async function getProblemSources(userId: string, items: ProblemSourceLookup[]) {
+  const problemById = new Map(items.filter((item) => item.id).map((item) => [item.id, item]));
+  const uniqueProblemIds = [...problemById.keys()];
   const sourcesByProblemId = new Map<string, ProblemSource[]>();
   if (uniqueProblemIds.length === 0) return sourcesByProblemId;
 
-  const problemRows = await db
-    .select({
-      id: problems.id,
-      titleSlug: problems.titleSlug,
-    })
-    .from(problems)
-    .where(and(eq(problems.userId, userId), inArray(problems.id, uniqueProblemIds)));
-  const rows = await db
-    .select()
-    .from(studyListItemProgress)
-    .where(and(eq(studyListItemProgress.userId, userId), inArray(studyListItemProgress.problemId, uniqueProblemIds)));
-  const lists = await loadStudyLists();
+  const [rows, lists] = await Promise.all([
+    db
+      .select()
+      .from(studyListItemProgress)
+      .where(and(eq(studyListItemProgress.userId, userId), inArray(studyListItemProgress.problemId, uniqueProblemIds))),
+    loadStudyLists(),
+  ]);
   const progressByProblemId = new Map<string, typeof rows>();
 
   for (const row of rows) {
@@ -96,7 +94,7 @@ export async function getProblemSources(userId: string, problemIds: string[]) {
     progressByProblemId.set(row.problemId, progressRows);
   }
 
-  for (const problem of problemRows) {
+  for (const problem of problemById.values()) {
     sourcesByProblemId.set(
       problem.id,
       getProblemSourcesFromStudyLists(problem.titleSlug, lists, progressByProblemId.get(problem.id) ?? []),
@@ -113,7 +111,7 @@ export async function getProblemSources(userId: string, problemIds: string[]) {
 }
 
 export async function attachProblemSources<T extends Problem>(userId: string, items: T[]) {
-  const sourcesByProblemId = await getProblemSources(userId, items.map((item) => item.id));
+  const sourcesByProblemId = await getProblemSources(userId, items);
   return items.map((item) => ({
     ...item,
     sources: sourcesByProblemId.get(item.id) ?? [{ kind: "manual", studyListSlug: null, title: "手动加入" }],
@@ -131,6 +129,25 @@ async function getUserProblemsByTitleSlug(userId: string, titleSlugs: string[], 
   return new Map(rows.filter((problem) => problem.titleSlug).map((problem) => [problem.titleSlug!, problem as Problem]));
 }
 
+async function getUserProblemStudyStatusesByTitleSlug(userId: string, titleSlugs: string[], client: DbClient = db) {
+  const uniqueSlugs = [...new Set(titleSlugs.filter(Boolean))];
+  if (uniqueSlugs.length === 0) return new Map<string, { status: string; reviewCount: number }>();
+
+  const rows = await client
+    .select({
+      titleSlug: problems.titleSlug,
+      status: problems.status,
+      reviewCount: problems.reviewCount,
+    })
+    .from(problems)
+    .where(and(eq(problems.userId, userId), inArray(problems.titleSlug, uniqueSlugs)));
+  return new Map(
+    rows
+      .filter((problem) => problem.titleSlug)
+      .map((problem) => [problem.titleSlug!, { status: problem.status, reviewCount: problem.reviewCount }]),
+  );
+}
+
 async function getProgressRows(userId: string, studyListSlug?: string, client: DbClient = db) {
   if (studyListSlug) {
     return client
@@ -142,14 +159,25 @@ async function getProgressRows(userId: string, studyListSlug?: string, client: D
   return client.select().from(studyListItemProgress).where(eq(studyListItemProgress.userId, userId));
 }
 
+async function getStudyListProgressSummaries(userId: string, client: DbClient = db) {
+  return client
+    .select({
+      studyListSlug: studyListItemProgress.studyListSlug,
+      titleSlug: studyListItemProgress.titleSlug,
+      status: studyListItemProgress.status,
+    })
+    .from(studyListItemProgress)
+    .where(eq(studyListItemProgress.userId, userId));
+}
+
 export async function listStudyListSummaries(userId: string): Promise<StudyListSummary[]> {
   const lists = await loadStudyLists();
   const enrollments = await db.select().from(studyListEnrollments).where(eq(studyListEnrollments.userId, userId));
-  const progressRows = await getProgressRows(userId);
+  const progressRows = await getStudyListProgressSummaries(userId);
   const enrollmentBySlug = new Map(enrollments.map((enrollment) => [enrollment.studyListSlug, enrollment]));
   const progressBySlug = new Map<string, typeof progressRows>();
   const allTitleSlugs = lists.flatMap((list) => list.items.map((item) => item.titleSlug));
-  const problemBySlug = await getUserProblemsByTitleSlug(userId, allTitleSlugs);
+  const problemBySlug = await getUserProblemStudyStatusesByTitleSlug(userId, allTitleSlugs);
 
   for (const row of progressRows) {
     const rows = progressBySlug.get(row.studyListSlug) ?? [];
@@ -453,25 +481,29 @@ export async function getStudyListDetail(userId: string, studyListSlug: string, 
   const list = await measurePerformanceStage(timer, "getStudyList", "io_cpu", () => getStudyList(studyListSlug));
   if (!list) return null;
 
-  const [enrollment] = await measurePerformanceStage(timer, "enrollmentQuery", "db", () => db
-    .select()
-    .from(studyListEnrollments)
-    .where(and(eq(studyListEnrollments.userId, userId), eq(studyListEnrollments.studyListSlug, studyListSlug)))
-    .limit(1));
-  const progressRows = await measurePerformanceStage(timer, "progressQuery", "db", () => getProgressRows(userId, studyListSlug));
+  const [enrollmentRows, progressRows, questionBySlug, problemBySlug] = await Promise.all([
+    measurePerformanceStage(timer, "enrollmentQuery", "db", () => db
+      .select()
+      .from(studyListEnrollments)
+      .where(and(eq(studyListEnrollments.userId, userId), eq(studyListEnrollments.studyListSlug, studyListSlug)))
+      .limit(1)),
+    measurePerformanceStage(timer, "progressQuery", "db", () => getProgressRows(userId, studyListSlug)),
+    measurePerformanceStage(timer, "leetcodeQuestionMap", "io_cpu", () => getLeetcodeQuestionMapBySlug()),
+    measurePerformanceStage(timer, "userProblemsQuery", "db", () => getUserProblemsByTitleSlug(userId, list.items.map((item) => item.titleSlug))),
+  ]);
+  const [enrollment] = enrollmentRows;
   const progressBySlug = new Map(progressRows.map((row) => [row.titleSlug, row]));
-  const questionBySlug = await measurePerformanceStage(timer, "leetcodeQuestionMap", "io_cpu", () => getLeetcodeQuestionMapBySlug());
-  const problemBySlug = await measurePerformanceStage(timer, "userProblemsQuery", "db", () => getUserProblemsByTitleSlug(userId, list.items.map((item) => item.titleSlug)));
+  const problemById = new Map([...problemBySlug.values()].map((problem) => [problem.id, problem]));
   const sourcesByProblemId = await measurePerformanceStage(timer, "problemSourcesQuery", "db", () => getProblemSources(
     userId,
-    [...problemBySlug.values()].map((problem) => problem.id),
+    [...problemBySlug.values()],
   ));
 
   const items = await measurePerformanceStage(timer, "buildItems", "app", () => list.items.map((item) => {
     const question = questionBySlug.get(item.titleSlug) as LeetcodeQuestion | undefined;
     const progress = progressBySlug.get(item.titleSlug);
     const problem = progress?.problemId
-      ? [...problemBySlug.values()].find((candidate) => candidate.id === progress.problemId) ?? null
+      ? problemById.get(progress.problemId) ?? null
       : problemBySlug.get(item.titleSlug) ?? null;
     const mode = progress?.mode ?? "follow_existing";
     const status = progress?.status ?? legacyProblemStudyStatus(problem, mode);
@@ -539,29 +571,61 @@ export async function getTodayStudyPlan(userId: string): Promise<TodayStudyPlan>
     .from(studyListEnrollments)
     .where(and(eq(studyListEnrollments.userId, userId), eq(studyListEnrollments.active, 1)));
 
-  for (const enrollment of enrollments) {
-    if (enrollment.lastQueuedOn === today) continue;
-    await queueNextStudyListItems(userId, enrollment.studyListSlug, {
+  const enrollmentsToQueue = enrollments.filter((enrollment) => enrollment.lastQueuedOn !== today);
+  const queueResults = await Promise.allSettled(
+    enrollmentsToQueue.map((enrollment) => queueNextStudyListItems(userId, enrollment.studyListSlug, {
       limit: enrollment.dailyNewCount,
       markDailyQueuedOn: true,
       today,
+    })),
+  );
+  const queueFailures = queueResults
+    .map((result, index) => ({ result, enrollment: enrollmentsToQueue[index] }))
+    .filter((entry): entry is { result: PromiseRejectedResult; enrollment: typeof enrollmentsToQueue[number] } => entry.result.status === "rejected");
+
+  if (queueFailures.length > 0) {
+    logError("study_list.daily_queue_failed", {
+      message: "Failed to queue one or more daily study lists",
+      userId,
+      metadata: {
+        failures: queueFailures.map(({ enrollment, result }) => ({
+          studyListSlug: enrollment.studyListSlug,
+          reason: result.reason instanceof Error ? result.reason.message : String(result.reason),
+        })),
+      },
     });
+    throw new Error(`Failed to queue ${queueFailures.length} daily study list(s)`);
   }
 
-  const allProblems = (await db
-    .select()
-    .from(problems)
-    .where(eq(problems.userId, userId))) as Problem[];
-  const dueProblems = allProblems.filter((problem) => isDue(problem, today));
+  const dueCondition = and(
+    eq(problems.userId, userId),
+    sql`${problems.status} <> 'mastered'`,
+    sql`(${problems.nextReviewAt} IS NULL OR ${problems.nextReviewAt} <= ${today})`,
+  );
+  const [dueProblems, totalsRow, extraStudyLists] = await Promise.all([
+    db
+      .select()
+      .from(problems)
+      .where(dueCondition)
+      .orderBy(problems.nextReviewAt, problems.createdAt),
+    db
+      .select({
+        problems: count(),
+        mastered: sql<number>`count(*) FILTER (WHERE ${problems.status} = 'mastered')`,
+      })
+      .from(problems)
+      .where(eq(problems.userId, userId)),
+    getStudyListQueueOptions(userId),
+  ]);
   const dueWithSources = await attachProblemSources(userId, dueProblems);
 
   return {
     today,
     dueProblems: dueWithSources,
-    extraStudyLists: await getStudyListQueueOptions(userId),
+    extraStudyLists,
     totals: {
-      problems: allProblems.length,
-      mastered: allProblems.filter((problem) => problem.status === "mastered").length,
+      problems: totalsRow[0]?.problems ?? 0,
+      mastered: Number(totalsRow[0]?.mastered ?? 0),
       due: dueWithSources.length,
     },
   };

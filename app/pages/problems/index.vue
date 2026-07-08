@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Search } from "@lucide/vue";
+import { normalizeProblemSearchQuery } from "@shared/problem-search";
 import { displayProblemNumber, displayProblemTags, displayProblemTitle } from "@shared/problems";
 import type { PaginatedResponse, Problem } from "@shared/types";
 
@@ -11,6 +12,7 @@ const requestFetch = useRequestFetch();
 const page = ref(1);
 const jumpPage = ref("1");
 const pageSize = 20;
+const isShortSearch = computed(() => normalizeProblemSearchQuery(q.value).tooShort);
 const problemQuery = computed(() => ({
   q: q.value || undefined,
   difficulty: difficulty.value || undefined,
@@ -21,9 +23,11 @@ const problemQuery = computed(() => ({
 const { data, pending, refresh } = await useAsyncData(
   "problems",
   () =>
-    requestFetch<PaginatedResponse<Problem>>("/api/problems", {
-      query: problemQuery.value,
-    }),
+    isShortSearch.value
+      ? Promise.resolve({ items: [], total: 0, page: page.value, pageSize } satisfies PaginatedResponse<Problem>)
+      : requestFetch<PaginatedResponse<Problem>>("/api/problems", {
+          query: problemQuery.value,
+        }),
   { watch: [problemQuery] },
 );
 
@@ -117,7 +121,9 @@ function jumpToPage() {
           </div>
           <div v-else-if="!data?.items.length" class="rounded-box border border-dashed border-base-300 p-10 text-center">
             <h2 class="text-xl font-black">没有匹配题目</h2>
-            <p class="mt-2 text-base-content/60">换个关键词，或从右侧 LeetCode 索引导入。</p>
+            <p class="mt-2 text-base-content/60">
+              {{ isShortSearch ? "请输入至少 2 个字符再搜索。" : "换个关键词，或从右侧 LeetCode 索引导入。" }}
+            </p>
           </div>
           <div v-else>
           <div class="overflow-x-auto">

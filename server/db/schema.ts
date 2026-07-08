@@ -44,7 +44,12 @@ export const problems = pgTable(
     uniqueIndex("uq_problems_user_title_slug").on(table.userId, table.titleSlug),
     index("idx_problems_user_title_slug").on(table.userId, table.titleSlug),
     index("idx_problems_user_next_review").on(table.userId, table.nextReviewAt, table.createdAt),
+    index("idx_problems_user_due_active").on(table.userId, table.nextReviewAt, table.createdAt).where(sql`${table.status} <> 'mastered'`),
     index("idx_problems_user_status").on(table.userId, table.status),
+    index("idx_problems_search_trgm").using(
+      "gin",
+      sql`lower(concat_ws(' ', ${table.title}, ${table.frontendId}, ${table.tags}, ${table.url}, ${table.titleCn}, ${table.urlEn}, ${table.urlCn})) gin_trgm_ops`,
+    ),
   ],
 );
 
