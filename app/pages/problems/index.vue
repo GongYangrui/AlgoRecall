@@ -7,20 +7,22 @@ import type { PaginatedResponse, Problem } from "@shared/types";
 definePageMeta({ middleware: "auth" });
 
 const q = ref("");
+const debouncedQ = ref("");
 const difficulty = ref("");
 const requestFetch = useRequestFetch();
 const page = ref(1);
 const jumpPage = ref("1");
 const pageSize = 20;
-const isShortSearch = computed(() => normalizeProblemSearchQuery(q.value).tooShort);
+let searchDebounce: ReturnType<typeof setTimeout> | undefined;
+const isShortSearch = computed(() => normalizeProblemSearchQuery(debouncedQ.value).tooShort);
 const problemQuery = computed(() => ({
-  q: q.value || undefined,
+  q: debouncedQ.value || undefined,
   difficulty: difficulty.value || undefined,
   page: page.value,
   pageSize,
 }));
 
-const { data, pending, refresh } = await useAsyncData(
+const { data, pending, error, refresh } = await useAsyncData(
   "problems",
   () =>
     isShortSearch.value
@@ -46,6 +48,13 @@ const visiblePages = computed(() => {
 watch([q, difficulty], () => {
   page.value = 1;
 });
+
+watch(q, (value) => {
+  if (searchDebounce) clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    debouncedQ.value = value;
+  }, 300);
+}, { immediate: true });
 
 watch(page, (value) => {
   jumpPage.value = String(value);
@@ -117,7 +126,13 @@ function jumpToPage() {
 
         <div v-auto-animate>
           <div v-if="pending" class="grid min-h-80 place-items-center">
-            <span class="loading loading-spinner loading-lg text-primary" />
+            <div class="grid w-full gap-3">
+              <div v-for="item in 6" :key="item" class="skeleton h-16 w-full" />
+            </div>
+          </div>
+          <div v-else-if="error" class="alert alert-error alert-soft">
+            <span>题库加载失败，请稍后重试。</span>
+            <button class="btn btn-sm" type="button" @click="() => refresh()">重试</button>
           </div>
           <div v-else-if="!data?.items.length" class="rounded-box border border-dashed border-base-300 p-10 text-center">
             <h2 class="text-xl font-black">没有匹配题目</h2>

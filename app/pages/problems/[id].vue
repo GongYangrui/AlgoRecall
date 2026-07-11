@@ -16,9 +16,10 @@ const reviewNote = ref("");
 const reviewModalOpen = ref(false);
 const deleteModalOpen = ref(false);
 const deleting = ref(false);
+const actionError = ref("");
 const requestFetch = useRequestFetch();
 
-const { data, pending, refresh } = await useAsyncData(`problem-${id.value}`, () =>
+const { data, pending, error, refresh } = await useAsyncData(`problem-${id.value}`, () =>
   requestFetch<{ problem: Problem; history: Review[] }>(`/api/problems/${id.value}`),
 );
 
@@ -70,19 +71,26 @@ function closeDeleteConfirm() {
   deleteModalOpen.value = false;
 }
 
-async function submitReview() {
-  if (!data.value?.problem || !selectedResult.value) return;
-  const result = selectedResult.value;
+async function submitReview(result: ReviewResult | null = selectedResult.value) {
+  if (!data.value?.problem || !result) return;
+  actionError.value = "";
   reviewing.value = result;
   try {
+    const idempotencyKey = crypto.randomUUID();
     await $fetch("/api/reviews", {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: { problemId: data.value.problem.id, result, note: reviewNote.value },
     });
     reviewModalOpen.value = false;
     selectedResult.value = null;
     reviewNote.value = "";
     await refresh();
+  } catch (err) {
+    const fetchError = err as { statusCode?: number; statusMessage?: string; data?: { statusMessage?: string } };
+    actionError.value = fetchError.statusCode === 429
+      ? "操作太频繁了，稍等一下再试。"
+      : fetchError.data?.statusMessage || fetchError.statusMessage || "提交失败，请稍后再试。";
   } finally {
     reviewing.value = "";
   }
@@ -91,9 +99,18 @@ async function submitReview() {
 async function deleteProblem() {
   if (!data.value?.problem) return;
   deleting.value = true;
+  actionError.value = "";
   try {
-    await $fetch(`/api/problems/${id.value}`, { method: "DELETE" });
+    await $fetch(`/api/problems/${id.value}`, {
+      method: "DELETE",
+      query: { expectedVersion: data.value.problem.version },
+    });
     await navigateTo("/problems");
+  } catch (err) {
+    const fetchError = err as { statusCode?: number };
+    actionError.value = fetchError.statusCode === 409
+      ? "这道题刚刚被其他操作更新了，请刷新后再删除。"
+      : "删除失败，请稍后再试。";
   } finally {
     deleting.value = false;
   }
@@ -104,7 +121,14 @@ async function deleteProblem() {
   <AppFrame>
     <div v-auto-animate>
       <div v-if="pending" class="grid min-h-96 place-items-center">
-        <span class="loading loading-spinner loading-lg text-primary" />
+        <div class="grid w-full gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div class="skeleton h-[34rem] w-full" />
+          <div class="skeleton h-72 w-full" />
+        </div>
+      </div>
+
+      <div v-else-if="error" class="alert alert-error alert-soft">
+        <span>题目加载失败，请返回题库或刷新页面。</span>
       </div>
 
       <div v-else-if="data?.problem" class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -222,6 +246,20 @@ async function deleteProblem() {
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body">
             <h2 class="card-title">记录一次复习</h2>
+            <label class="grid gap-2">
+              <span class="text-sm font-semibold text-base-content/65">本次备注，可不填</span>
+              <textarea
+                v-model="reviewNote"
+                class="textarea min-h-24 w-full"
+                :maxlength="REVIEW_NOTE_MAX_LENGTH"
+                :placeholder="reviewNotePlaceholder(null)"
+                :disabled="Boolean(reviewing)"
+              />
+              <span class="text-right text-xs text-base-content/45">{{ reviewNote.length }}/{{ REVIEW_NOTE_MAX_LENGTH }}</span>
+            </label>
+            <div v-if="actionError" class="alert alert-error alert-soft">
+              <span>{{ actionError }}</span>
+            </div>
             <div v-auto-animate class="grid gap-2">
               <button
                 v-for="result in reviewResults"
@@ -230,7 +268,7 @@ async function deleteProblem() {
                 :class="reviewButtonClass(result)"
                 type="button"
                 :disabled="Boolean(reviewing)"
-                @click="openReviewNote(result)"
+                @click="submitReview(result)"
               >
                 <Loader2 v-if="reviewing === result" class="h-4 w-4 animate-spin" />
                 {{ resultLabel(result) }}
@@ -249,7 +287,7 @@ async function deleteProblem() {
       <div class="modal modal-middle" :class="{ 'modal-open': reviewModalOpen }" role="dialog" aria-modal="true">
         <div v-auto-animate class="modal-box">
           <h2 class="text-xl font-black">记录：{{ selectedResult ? resultLabel(selectedResult) : "本次复习" }}</h2>
-          <form class="mt-4 space-y-4" @submit.prevent="submitReview">
+          <form class="mt-4 space-y-4" @submit.prevent="submitReview()">
             <label class="block">
               <span class="mb-2 block font-semibold">这次刷题有什么收获？</span>
               <textarea

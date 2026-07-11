@@ -5,7 +5,7 @@ import { trackAnalyticsEvent } from "../../utils/analytics";
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
   const summaries = await listStudyListSummaries(session.user.id);
-  await trackAnalyticsEvent({
+  void trackAnalyticsEvent({
     userId: session.user.id,
     event: "study_lists_viewed",
     entityType: "page",

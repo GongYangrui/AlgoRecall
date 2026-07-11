@@ -24,6 +24,7 @@ function problem(overrides: Partial<Problem>): Problem {
     nextReviewAt: "2026-07-01",
     lastReviewedAt: null,
     reviewCount: 0,
+    version: 1,
     createdAt: "2026-07-01",
     updatedAt: "2026-07-01",
     ...overrides,

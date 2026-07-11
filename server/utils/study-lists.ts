@@ -259,7 +259,8 @@ async function startStudyListWithClient(
     .select()
     .from(studyListEnrollments)
     .where(and(eq(studyListEnrollments.userId, userId), eq(studyListEnrollments.studyListSlug, list.slug)))
-    .limit(1);
+    .limit(1)
+    .for("update");
 
   if (enrollment?.lastQueuedOn !== getToday()) {
     await queueNextStudyListItemsWithClient(client, userId, list, { markDailyQueuedOn: true });
@@ -386,12 +387,17 @@ async function queueNextStudyListItemsWithClient(
     .select()
     .from(studyListEnrollments)
     .where(and(eq(studyListEnrollments.userId, userId), eq(studyListEnrollments.studyListSlug, list.slug), eq(studyListEnrollments.active, 1)))
-    .limit(1);
+    .limit(1)
+    .for("update");
   if (!enrollment) return null;
 
   await ensureStudyListProgressRows(userId, list, client);
   const limit = normalizeDailyNewCount(options.limit ?? enrollment.dailyNewCount);
-  const progressRows = (await getProgressRows(userId, list.slug, client)).sort((a, b) => a.order - b.order);
+  const progressRows = (await client
+    .select()
+    .from(studyListItemProgress)
+    .where(and(eq(studyListItemProgress.userId, userId), eq(studyListItemProgress.studyListSlug, list.slug)))
+    .for("update")).sort((a, b) => a.order - b.order);
   const candidates = selectStudyListQueueBatch(progressRows, limit);
   const problemBySlug = await getUserProblemsByTitleSlug(
     userId,

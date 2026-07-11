@@ -27,6 +27,7 @@ export type Problem = {
   nextReviewAt: string | null;
   lastReviewedAt: string | null;
   reviewCount: number;
+  version: number;
   createdAt: string;
   updatedAt: string;
   sources?: ProblemSource[];
@@ -42,6 +43,7 @@ export type Review = {
   nextStage: number;
   nextReviewAt: string | null;
   note: string | null;
+  idempotencyKey?: string | null;
 };
 
 export type LeetcodeQuestion = {

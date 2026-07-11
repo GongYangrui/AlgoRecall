@@ -4,6 +4,10 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { userRoleFieldConfig } from "@shared/auth-fields";
 import { db } from "../db";
 import * as authSchema from "../db/auth-schema";
+import { assertProductionConfig, trustedOrigins } from "./env";
+import { redisSecondaryStorage } from "./redis";
+
+assertProductionConfig();
 
 const adminEmails = (process.env.ADMIN_EMAILS || "")
   .split(",")
@@ -11,21 +15,29 @@ const adminEmails = (process.env.ADMIN_EMAILS || "")
   .filter(Boolean);
 
 export const auth = betterAuth({
+  appName: "AlgoRecall",
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
-  trustedOrigins: (process.env.TRUSTED_ORIGINS || process.env.BETTER_AUTH_URL || "http://localhost:3000")
-    .split(",")
-    .map((o) => o.trim()),
+  trustedOrigins: trustedOrigins(),
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: authSchema,
   }),
+  secondaryStorage: redisSecondaryStorage(),
+  rateLimit: {
+    enabled: true,
+    storage: redisSecondaryStorage() ? "secondary-storage" : "memory",
+    window: 60,
+    max: 100,
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
     maxPasswordLength: 128,
+    requireEmailVerification: false,
   },
   session: {
     expiresIn: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
   },
   user: {
     additionalFields: {
@@ -43,6 +55,16 @@ export const auth = betterAuth({
           }
         },
       },
+    },
+  },
+  advanced: {
+    useSecureCookies: process.env.NODE_ENV === "production",
+    ipAddress: {
+      ipAddressHeaders: ["x-real-ip"],
+      trustedProxies: (process.env.TRUSTED_PROXIES || "127.0.0.1,::1")
+        .split(",")
+        .map((proxy) => proxy.trim())
+        .filter(Boolean),
     },
   },
   hooks: {
