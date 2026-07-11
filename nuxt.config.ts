@@ -5,6 +5,11 @@ export default defineNuxtConfig({
   compatibilityDate: "2026-07-01",
   devtools: { enabled: true },
   app: {
+    head: {
+      link: [
+        { rel: "icon", type: "image/svg+xml", href: "/algo-recall-icon.svg" },
+      ],
+    },
     pageTransition: {
       name: "page",
       mode: "out-in",

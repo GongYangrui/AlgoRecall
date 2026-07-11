@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, BookOpen, CalendarCheck, Import, ListChecks, LogOut, Menu, Sparkles } from "@lucide/vue";
+import { BarChart3, BookOpen, CalendarCheck, Import, ListChecks, LogOut, Menu } from "@lucide/vue";
 import { authClient } from "../utils/auth-client";
 
 const route = useRoute();
@@ -45,9 +45,7 @@ function openImportModal() {
         </ul>
       </div>
       <NuxtLink to="/app" class="btn btn-ghost gap-2 text-lg font-black">
-        <span class="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-content">
-          <Sparkles class="h-5 w-5" />
-        </span>
+        <BrandLogo class="h-9 w-9 shrink-0" />
         AlgoRecall
       </NuxtLink>
     </div>
