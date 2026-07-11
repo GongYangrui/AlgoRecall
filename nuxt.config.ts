@@ -14,6 +14,15 @@ export default defineNuxtConfig({
   modules: [],
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            charts: ["echarts", "vue-echarts"],
+          },
+        },
+      },
+    },
   },
   alias: {
     "@shared": fileURLToPath(new URL("./shared", import.meta.url)),

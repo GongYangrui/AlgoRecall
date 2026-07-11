@@ -8,7 +8,7 @@ import { assertRateLimit } from "../../utils/rate-limit";
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
-  assertRateLimit(event, { bucket: "leetcode.search", key: session.user.id, limit: 60, windowMs: 60_000 });
+  await assertRateLimit(event, { bucket: "leetcode.search", key: session.user.id, limit: 60, windowMs: 60_000 });
   const query = getQuery(event);
   const q = typeof query.q === "string" ? query.q.trim().slice(0, 100) : "";
   setLogOperation(event, "leetcode.search", { q: q.trim().slice(0, 100) });

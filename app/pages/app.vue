@@ -15,11 +15,13 @@ const selectedId = ref("");
 const selectedReviewProblem = ref<Problem | null>(null);
 const selectedResult = ref<ReviewResult | null>(null);
 const reviewNote = ref("");
+const reviewNotes = ref<Record<string, string>>({});
 const reviewModalOpen = ref(false);
 const queueingStudyList = ref("");
+const actionError = ref("");
 const requestFetch = useRequestFetch();
 
-const { data, pending, refresh } = await useAsyncData("today-study-plan", () => requestFetch<TodayStudyPlan>("/api/study-plan/today"));
+const { data, pending, error, refresh } = await useAsyncData("today-study-plan", () => requestFetch<TodayStudyPlan>("/api/study-plan/today"));
 
 const dueProblems = computed(() => (data.value?.dueProblems || []).filter((problem) => !dismissed.value.has(problem.id)));
 const extraStudyLists = computed(() => data.value?.extraStudyLists || []);
@@ -61,22 +63,40 @@ function closeReviewNote() {
   reviewNote.value = "";
 }
 
-async function submitReview() {
-  if (!selectedReviewProblem.value || !selectedResult.value) return;
-  const problem = selectedReviewProblem.value;
-  const result = selectedResult.value;
+function setReviewNote(problemId: string, value: string) {
+  reviewNotes.value = {
+    ...reviewNotes.value,
+    [problemId]: value.slice(0, REVIEW_NOTE_MAX_LENGTH),
+  };
+}
+
+function textareaValue(event: Event) {
+  return event.target instanceof HTMLTextAreaElement ? event.target.value : "";
+}
+
+async function submitReview(problem: Problem | null = selectedReviewProblem.value, result: ReviewResult | null = selectedResult.value) {
+  if (!problem || !result) return;
+  actionError.value = "";
   submitting.value = result;
   try {
+    const idempotencyKey = crypto.randomUUID();
     await $fetch("/api/reviews", {
       method: "POST",
-      body: { problemId: problem.id, result, note: reviewNote.value },
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: { problemId: problem.id, result, note: reviewNotes.value[problem.id] ?? reviewNote.value },
     });
     reviewModalOpen.value = false;
     selectedReviewProblem.value = null;
     selectedResult.value = null;
     reviewNote.value = "";
+    setReviewNote(problem.id, "");
     dismissed.value = new Set(dismissed.value).add(problem.id);
     await refresh();
+  } catch (err) {
+    const fetchError = err as { statusCode?: number; statusMessage?: string; data?: { statusMessage?: string } };
+    actionError.value = fetchError.statusCode === 429
+      ? "操作太频繁了，稍等一下再试。"
+      : fetchError.data?.statusMessage || fetchError.statusMessage || "提交失败，请稍后再试。";
   } finally {
     submitting.value = "";
   }
@@ -137,7 +157,14 @@ function reviewButtonClass(result: ReviewResult) {
 
     <div v-auto-animate>
       <div v-if="pending" class="grid min-h-80 place-items-center">
-        <span class="loading loading-spinner loading-lg text-primary" />
+        <div class="grid w-full gap-4 lg:grid-cols-[minmax(0,1fr)_430px]">
+          <div class="skeleton h-96 w-full" />
+          <div class="skeleton h-80 w-full" />
+        </div>
+      </div>
+
+      <div v-else-if="error" class="alert alert-error alert-soft">
+        <span>今日复习加载失败，请刷新页面重试。</span>
       </div>
 
       <div v-else-if="dueProblems.length === 0" class="hero min-h-96 rounded-box bg-base-100">
@@ -276,6 +303,23 @@ function reviewButtonClass(result: ReviewResult) {
                   <NuxtLink class="btn btn-outline btn-sm transition duration-150 ease-out active:scale-[0.98]" :to="`/problems/${currentProblem.id}`">详情</NuxtLink>
                 </div>
 
+                <label class="grid gap-2">
+                  <span class="text-sm font-semibold text-base-content/65">本次备注，可不填</span>
+                  <textarea
+                    class="textarea min-h-24 w-full"
+                    :maxlength="REVIEW_NOTE_MAX_LENGTH"
+                    :placeholder="reviewNotePlaceholder(null)"
+                    :disabled="Boolean(submitting)"
+                    :value="reviewNotes[currentProblem.id] || ''"
+                    @input="setReviewNote(currentProblem.id, textareaValue($event))"
+                  />
+                  <span class="text-right text-xs text-base-content/45">{{ (reviewNotes[currentProblem.id] || '').length }}/{{ REVIEW_NOTE_MAX_LENGTH }}</span>
+                </label>
+
+                <div v-if="actionError" class="alert alert-error alert-soft">
+                  <span>{{ actionError }}</span>
+                </div>
+
                 <div v-auto-animate class="grid gap-2">
                   <button
                     v-for="result in reviewResults"
@@ -284,7 +328,7 @@ function reviewButtonClass(result: ReviewResult) {
                     :class="reviewButtonClass(result)"
                     type="button"
                     :disabled="Boolean(submitting)"
-                    @click="openReviewNote(currentProblem, result)"
+                    @click="submitReview(currentProblem, result)"
                   >
                     <Loader2 v-if="submitting === result" class="h-4 w-4 animate-spin" />
                     {{ resultLabel(result) }}
@@ -303,7 +347,7 @@ function reviewButtonClass(result: ReviewResult) {
           <p v-if="selectedReviewProblem" class="mt-2 text-sm text-base-content/55">
             {{ displayProblemNumber(selectedReviewProblem) }} {{ displayProblemTitle(selectedReviewProblem) }}
           </p>
-          <form class="mt-4 space-y-4" @submit.prevent="submitReview">
+          <form class="mt-4 space-y-4" @submit.prevent="submitReview()">
             <label class="block">
               <span class="mb-2 block font-semibold">这次刷题有什么收获？</span>
               <textarea

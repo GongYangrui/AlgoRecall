@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   const problem = await startStudyListItem(session.user.id, slug, titleSlug);
   if (!problem) throw createError({ statusCode: 404, statusMessage: "Study list item not found" });
-  await trackAnalyticsEvent({
+  void trackAnalyticsEvent({
     userId: session.user.id,
     event: "study_item_started",
     entityType: "problem",

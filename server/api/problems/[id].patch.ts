@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { createError } from "h3";
 import { z } from "zod";
 import { problemDifficulties, problemStatuses } from "@shared/types";
@@ -14,7 +14,8 @@ const updateInput = z.object({
   difficulty: z.enum(problemDifficulties).optional(),
   status: z.enum(problemStatuses).optional(),
   nextReviewAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-}).refine((value) => Object.keys(value).length > 0, { message: "Empty update" });
+  expectedVersion: z.number().int().positive(),
+}).refine((value) => Object.keys(value).some((key) => key !== "expectedVersion"), { message: "Empty update" });
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
@@ -23,16 +24,36 @@ export default defineEventHandler(async (event) => {
 
   const parsed = updateInput.safeParse(await readBody(event));
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: "Invalid problem update" });
+  const { expectedVersion, ...updates } = parsed.data;
+
+  const conditions = [
+    eq(problems.userId, session.user.id),
+    eq(problems.id, id),
+    eq(problems.version, expectedVersion),
+  ];
 
   const [updated] = await db
     .update(problems)
     .set({
-      ...parsed.data,
+      ...updates,
+      version: sql`${problems.version} + 1`,
       updatedAt: nowIso(),
     })
-    .where(and(eq(problems.userId, session.user.id), eq(problems.id, id)))
+    .where(and(...conditions))
     .returning();
 
-  if (!updated) throw createError({ statusCode: 404, statusMessage: "Problem not found" });
+  if (!updated) {
+    const [existing] = await db
+      .select({ id: problems.id, version: problems.version })
+      .from(problems)
+      .where(and(eq(problems.userId, session.user.id), eq(problems.id, id)))
+      .limit(1);
+    if (!existing) throw createError({ statusCode: 404, statusMessage: "Problem not found" });
+    throw createError({
+      statusCode: 409,
+      statusMessage: "Problem changed by another request",
+      data: { code: "VERSION_CONFLICT", currentVersion: existing.version },
+    });
+  }
   return updated;
 });

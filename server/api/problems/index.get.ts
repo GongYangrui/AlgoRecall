@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
   }
   if (difficulty) conditions = and(conditions, eq(problems.difficulty, difficulty))!;
 
-  await trackAnalyticsEvent({
+  void trackAnalyticsEvent({
     userId: session.user.id,
     event: "problem_library_viewed",
     entityType: "page",

@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
     .limit(50);
 
   const [problemWithSources] = await attachProblemSources(session.user.id, [problem]);
-  await trackAnalyticsEvent({
+  void trackAnalyticsEvent({
     userId: session.user.id,
     event: "problem_viewed",
     entityType: "problem",

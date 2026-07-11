@@ -59,6 +59,41 @@ ensure_env() {
     info "Set COMPOSE_DATABASE_URL (Docker Compose default)"
   fi
 
+  if ! grep -q "^POSTGRES_USER=" .env 2>/dev/null; then
+    echo "POSTGRES_USER=postgres" >> .env
+    info "Set POSTGRES_USER=postgres"
+  fi
+
+  if ! grep -q "^POSTGRES_PASSWORD=" .env 2>/dev/null; then
+    echo "POSTGRES_PASSWORD=postgres" >> .env
+    yellow "Set default POSTGRES_PASSWORD=postgres. Change it before production deploy."
+  fi
+
+  if ! grep -q "^POSTGRES_DB=" .env 2>/dev/null; then
+    echo "POSTGRES_DB=algorecall" >> .env
+    info "Set POSTGRES_DB=algorecall"
+  fi
+
+  if ! grep -q "^POSTGRES_HOST_PORT=" .env 2>/dev/null; then
+    echo "POSTGRES_HOST_PORT=55432" >> .env
+    info "Set POSTGRES_HOST_PORT=55432"
+  fi
+
+  if ! grep -q "^COMPOSE_REDIS_URL=" .env 2>/dev/null; then
+    echo "COMPOSE_REDIS_URL=redis://redis:6379" >> .env
+    info "Set COMPOSE_REDIS_URL (Docker Compose default)"
+  fi
+
+  if ! grep -q "^REDIS_URL=" .env 2>/dev/null; then
+    echo "REDIS_URL=redis://localhost:6380" >> .env
+    info "Set REDIS_URL=redis://localhost:6380"
+  fi
+
+  if ! grep -q "^REDIS_HOST_PORT=" .env 2>/dev/null; then
+    echo "REDIS_HOST_PORT=6380" >> .env
+    info "Set REDIS_HOST_PORT=6380"
+  fi
+
   if ! grep -q "^TRUSTED_ORIGINS=" .env 2>/dev/null; then
     local auth_url
     auth_url="$(grep "^BETTER_AUTH_URL=" .env | tail -n 1 | cut -d= -f2-)"
@@ -184,6 +219,10 @@ cmd_up() {
   $COMPOSE up -d postgres
   wait_for_service_healthy postgres 90
 
+  info "Starting Redis service..."
+  $COMPOSE up -d redis
+  wait_for_service_healthy redis 90
+
   run_migrations
 
   info "Starting app service..."
@@ -240,6 +279,8 @@ cmd_migrate() {
   load_env
   $COMPOSE up -d postgres
   wait_for_service_healthy postgres 90
+  $COMPOSE up -d redis
+  wait_for_service_healthy redis 90
   run_migrations
 }
 

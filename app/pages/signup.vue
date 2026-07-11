@@ -73,7 +73,6 @@ async function submit() {
         </div>
 
         <div v-if="error" class="alert alert-error alert-soft mb-4">{{ error }}</div>
-
         <fieldset class="fieldset auth-form-fieldset w-full">
           <legend class="fieldset-legend">创建账号</legend>
 
@@ -104,7 +103,7 @@ async function submit() {
 
           <button class="btn btn-primary mt-4 w-full" type="submit" :disabled="loading">
             <Loader2 v-if="loading" class="h-4 w-4 animate-spin" />
-            注册并进入
+            注册
           </button>
 
           <p class="text-center text-sm text-base-content/60">

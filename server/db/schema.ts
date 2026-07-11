@@ -30,6 +30,7 @@ export const problems = pgTable(
     nextReviewAt: dateString("next_review_at"),
     lastReviewedAt: timestampString("last_reviewed_at"),
     reviewCount: integer("review_count").notNull().default(0),
+    version: integer("version").notNull().default(1),
     createdAt: timestampString("created_at").notNull(),
     updatedAt: timestampString("updated_at").notNull(),
   },
@@ -69,6 +70,7 @@ export const reviews = pgTable(
     nextStage: integer("next_stage").notNull(),
     nextReviewAt: dateString("next_review_at"),
     note: text("note"),
+    idempotencyKey: text("idempotency_key"),
   },
   (table) => [
     check("chk_reviews_result", sql`${table.result} IN ('easy', 'hard', 'solution', 'mastered')`),
@@ -76,6 +78,7 @@ export const reviews = pgTable(
     check("chk_reviews_next_stage_range", sql`${table.nextStage} >= 0 AND ${table.nextStage} <= 6`),
     index("idx_reviews_user_reviewed").on(table.userId, table.reviewedAt),
     index("idx_reviews_user_problem").on(table.userId, table.problemId, table.reviewedAt),
+    uniqueIndex("uq_reviews_user_idempotency_key").on(table.userId, table.idempotencyKey).where(sql`${table.idempotencyKey} IS NOT NULL`),
   ],
 );
 
@@ -147,6 +150,7 @@ export const studyListItemProgress = pgTable(
     uniqueIndex("uq_study_list_item_progress_user_list_slug").on(table.userId, table.studyListSlug, table.titleSlug),
     index("idx_study_list_item_progress_user_problem").on(table.userId, table.problemId),
     index("idx_study_list_item_progress_user_status").on(table.userId, table.status),
+    index("idx_study_list_item_progress_user_list_status_order").on(table.userId, table.studyListSlug, table.status, table.order),
   ],
 );
 
@@ -179,6 +183,7 @@ export const appEvents = pgTable(
     check("chk_app_events_duration_nonnegative", sql`${table.durationMs} IS NULL OR ${table.durationMs} >= 0`),
     index("idx_app_events_timestamp").on(table.timestamp),
     index("idx_app_events_level").on(table.level),
+    index("idx_app_events_level_timestamp").on(table.level, table.timestamp),
     index("idx_app_events_source").on(table.source),
     index("idx_app_events_app_version").on(table.appVersion),
     index("idx_app_events_status_code").on(table.statusCode),

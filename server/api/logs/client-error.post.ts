@@ -7,7 +7,7 @@ import { assertRateLimit } from "../../utils/rate-limit";
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
-  assertRateLimit(event, { bucket: "client.error", key: session.user.id, limit: 20, windowMs: 60_000 });
+  await assertRateLimit(event, { bucket: "client.error", key: session.user.id, limit: 20, windowMs: 60_000 });
   const payload = normalizeClientErrorPayload(await readBody(event));
   if (!payload) throw createError({ statusCode: 400, statusMessage: "Invalid client error payload" });
 

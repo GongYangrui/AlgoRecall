@@ -1,4 +1,5 @@
-import { createError, getHeader, getRequestIP, type H3Event } from "h3";
+import { createError, getHeader, setResponseHeader, type H3Event } from "h3";
+import { getRedis } from "./redis";
 
 type RateLimitOptions = {
   bucket: string;
@@ -15,7 +16,7 @@ type RateLimitEntry = {
 const buckets = new Map<string, RateLimitEntry>();
 
 function clientKey(event: H3Event) {
-  return getRequestIP(event, { xForwardedFor: true }) || getHeader(event, "x-real-ip") || "unknown";
+  return getHeader(event, "x-real-ip") || event.node.req.socket.remoteAddress || "unknown";
 }
 
 function cleanup(now: number) {
@@ -25,7 +26,27 @@ function cleanup(now: number) {
   }
 }
 
-export function assertRateLimit(event: H3Event, options: RateLimitOptions) {
+async function assertRedisRateLimit(event: H3Event, options: RateLimitOptions) {
+  const redis = getRedis();
+  if (!redis) return false;
+
+  if (redis.status === "wait") await redis.connect();
+  const key = `rate:${options.bucket}:${options.key ?? clientKey(event)}`;
+  const ttlSeconds = Math.max(1, Math.ceil(options.windowMs / 1000));
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, ttlSeconds);
+  if (count <= options.limit) return true;
+
+  const retryAfter = Math.max(1, await redis.ttl(key));
+  setResponseHeader(event, "Retry-After", retryAfter);
+  throw createError({
+    statusCode: 429,
+    statusMessage: "Too many requests",
+    data: { code: "RATE_LIMITED", retryAfterSeconds: retryAfter },
+  });
+}
+
+function assertMemoryRateLimit(event: H3Event, options: RateLimitOptions) {
   const now = Date.now();
   cleanup(now);
 
@@ -39,11 +60,16 @@ export function assertRateLimit(event: H3Event, options: RateLimitOptions) {
   current.count += 1;
   if (current.count <= options.limit) return;
 
+  const retryAfterSeconds = Math.max(1, Math.ceil((current.resetAt - now) / 1000));
+  setResponseHeader(event, "Retry-After", retryAfterSeconds);
   throw createError({
     statusCode: 429,
     statusMessage: "Too many requests",
-    data: {
-      retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
-    },
+    data: { code: "RATE_LIMITED", retryAfterSeconds },
   });
+}
+
+export async function assertRateLimit(event: H3Event, options: RateLimitOptions) {
+  const usedRedis = await assertRedisRateLimit(event, options);
+  if (!usedRedis) assertMemoryRateLimit(event, options);
 }

@@ -1,11 +1,3 @@
-TRUNCATE TABLE
-  "reviews",
-  "study_list_item_progress",
-  "study_list_enrollments",
-  "problems",
-  "app_events",
-  "analytics_events"
-RESTART IDENTITY CASCADE;--> statement-breakpoint
 ALTER TABLE "problems" ALTER COLUMN "next_review_at" TYPE date USING NULLIF("next_review_at", '')::date;--> statement-breakpoint
 ALTER TABLE "problems" ALTER COLUMN "last_reviewed_at" TYPE timestamp with time zone USING NULLIF("last_reviewed_at", '')::timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "problems" ALTER COLUMN "created_at" TYPE timestamp with time zone USING COALESCE(NULLIF("created_at", '')::timestamp with time zone, now());--> statement-breakpoint

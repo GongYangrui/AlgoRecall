@@ -93,7 +93,7 @@ async function findExistingProblem(userId: string, item: Pick<z.infer<typeof pro
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
   const body = await readBody(event);
-  assertRateLimit(event, {
+  await assertRateLimit(event, {
     bucket: Array.isArray(body?.problems) ? "problem.bulk_create" : "problem.create",
     key: session.user.id,
     limit: Array.isArray(body?.problems) ? 10 : 120,

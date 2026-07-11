@@ -39,7 +39,6 @@ function getLoginErrorMessage(authError: LoginError): string {
   if (message === "Invalid email or password") {
     return invalidCredentialsMessage;
   }
-
   if (authError.status === 401) {
     return invalidCredentialsMessage;
   }
