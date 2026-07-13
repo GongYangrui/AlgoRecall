@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { BarChart3, BookOpen, CalendarCheck, Import, ListChecks, LogOut, Menu } from "@lucide/vue";
 import { authClient } from "../utils/auth-client";
+import { getAvatarInitial, normalizeNickname, shouldShowNavNickname } from "../utils/user-display";
 
 const route = useRoute();
 const importModal = ref<{ open: () => void } | null>(null);
+const session = authClient.useSession();
+
+const nickname = computed(() => normalizeNickname(session.value.data?.user.name));
+const email = computed(() => session.value.data?.user.email?.trim() || "");
+const avatarInitial = computed(() => getAvatarInitial(nickname.value));
+const showNavNickname = computed(() => shouldShowNavNickname(nickname.value));
 
 const links = [
   { href: "/app", label: "今日复习", icon: CalendarCheck },
@@ -66,10 +73,36 @@ function openImportModal() {
         <Import class="h-4 w-4" />
         导入题目
       </button>
-      <button class="btn btn-ghost btn-sm gap-2" type="button" @click="logout">
-        <LogOut class="h-4 w-4" />
-        退出
-      </button>
+      <details class="dropdown dropdown-end">
+        <summary class="btn btn-ghost h-auto min-h-10 gap-2 px-2" :aria-label="nickname ? `打开 ${nickname} 的账户菜单` : '打开账户菜单'">
+          <div class="avatar avatar-placeholder shrink-0">
+            <div class="w-8 rounded-full bg-neutral text-neutral-content">
+              <span class="text-sm font-bold" aria-hidden="true">{{ avatarInitial }}</span>
+            </div>
+          </div>
+          <span v-if="showNavNickname" class="hidden max-w-28 truncate text-sm font-semibold md:block">
+            {{ nickname }}
+          </span>
+        </summary>
+        <div class="dropdown-content z-50 mt-3 w-64 rounded-box border border-base-300 bg-base-100 shadow">
+          <div class="border-b border-base-300 px-4 py-3">
+            <p class="break-words text-sm font-semibold text-base-content">
+              {{ nickname || "未设置昵称" }}
+            </p>
+            <p v-if="email" class="mt-1 break-all text-xs text-base-content/60">
+              {{ email }}
+            </p>
+          </div>
+          <ul class="menu p-2">
+            <li>
+              <button type="button" @click="logout">
+                <LogOut class="h-4 w-4" />
+                退出登录
+              </button>
+            </li>
+          </ul>
+        </div>
+      </details>
     </div>
   </div>
   <ImportProblemModal ref="importModal" />
