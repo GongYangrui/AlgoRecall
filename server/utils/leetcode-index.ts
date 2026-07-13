@@ -76,7 +76,10 @@ export async function searchLeetcodeQuestions(q: string, limit = 20) {
     .select()
     .from(leetcodeQuestions)
     .where(sql`${searchText} LIKE ${like} ESCAPE '\\' OR replace(${searchText}, ' ', '') LIKE ${compactLike} ESCAPE '\\'`)
-    .orderBy(asc(sql`NULLIF(regexp_replace(${leetcodeQuestions.questionFrontendId}, '[^0-9]', '', 'g'), '')::int NULLS LAST`), asc(leetcodeQuestions.questionFrontendId))
+    .orderBy(
+      sql`NULLIF(regexp_replace(${leetcodeQuestions.questionFrontendId}, '[^0-9]', '', 'g'), '')::int ASC NULLS LAST`,
+      asc(leetcodeQuestions.questionFrontendId),
+    )
     .limit(limit);
 
   if (rows.length > 0) {
