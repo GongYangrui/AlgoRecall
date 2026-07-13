@@ -63,9 +63,3 @@ npm run db:migrate   # 迁移前安全检查 + Drizzle 迁移
 ./start.sh migrate
 ./start.sh cleanup 30
 ```
-
-更多本地和线上部署细节在 `README.local.md`，该文件默认不提交到 GitHub。
-
-## License
-
-Private project. Add a license before publishing as an open-source repository.
