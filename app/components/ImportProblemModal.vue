@@ -4,6 +4,7 @@ import { displayProblemTags } from "@shared/problems";
 import type { LeetcodeQuestion, LeetcodeSearchResult, Problem } from "@shared/types";
 
 const dialogRef = ref<HTMLDialogElement | null>(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
 const importQuery = ref("");
 const importLoading = ref(false);
 const importing = ref<Record<string, boolean>>({});
@@ -11,26 +12,55 @@ const importError = ref("");
 const importSuccess = ref("");
 const searched = ref(false);
 const results = ref<LeetcodeSearchResult[]>([]);
+let searchRequestVersion = 0;
 
-defineExpose({
-  open: () => dialogRef.value?.showModal(),
-});
+function resetSearch() {
+  searchRequestVersion += 1;
+  importQuery.value = "";
+  importLoading.value = false;
+  importError.value = "";
+  importSuccess.value = "";
+  searched.value = false;
+  results.value = [];
+}
+
+async function open() {
+  resetSearch();
+  dialogRef.value?.showModal();
+  await nextTick();
+
+  if (import.meta.client && window.matchMedia("(pointer: fine)").matches) {
+    searchInputRef.value?.focus({ preventScroll: true });
+  }
+}
+
+defineExpose({ open });
 
 async function searchLeetcode() {
+  const requestVersion = ++searchRequestVersion;
+  const query = importQuery.value.trim();
   searched.value = true;
   importError.value = "";
   importSuccess.value = "";
-  if (!importQuery.value.trim()) {
+  if (!query) {
+    importLoading.value = false;
     results.value = [];
     return;
   }
   importLoading.value = true;
   try {
-    results.value = await $fetch<LeetcodeSearchResult[]>("/api/leetcode/search", {
-      query: { q: importQuery.value },
+    const nextResults = await $fetch<LeetcodeSearchResult[]>("/api/leetcode/search", {
+      query: { q: query },
     });
+    if (requestVersion === searchRequestVersion) {
+      results.value = nextResults;
+    }
+  } catch (error) {
+    if (requestVersion === searchRequestVersion) throw error;
   } finally {
-    importLoading.value = false;
+    if (requestVersion === searchRequestVersion) {
+      importLoading.value = false;
+    }
   }
 }
 
@@ -139,7 +169,14 @@ function fullQuestionTitle(question: LeetcodeQuestion) {
         <form class="join w-full" @submit.prevent="searchLeetcode">
           <label class="input input-bordered join-item flex flex-1 items-center gap-2">
             <Search class="h-4 w-4 text-base-content/45" />
-            <input v-model="importQuery" type="search" class="grow" placeholder="1、两数之和、reverse integer、滑动窗口" />
+            <input
+              ref="searchInputRef"
+              v-model="importQuery"
+              type="search"
+              class="grow"
+              aria-label="搜索 LeetCode 题目"
+              placeholder="1、两数之和、reverse integer、滑动窗口"
+            />
           </label>
           <button class="btn btn-primary join-item min-w-24 transition duration-150 ease-out active:scale-[0.98]" type="submit" :disabled="importLoading">
             <Loader2 v-if="importLoading" class="h-4 w-4 animate-spin" />
