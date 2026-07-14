@@ -4,6 +4,7 @@ type RequestMessage =
   | { type: "GET_CONNECTION" }
   | { type: "CONNECT"; deviceName?: string }
   | { type: "GET_PROBLEM"; titleSlug: string }
+  | { type: "GET_TODAY_PLAN" }
   | { type: "SUBMIT_REVIEW"; titleSlug: string; result: string; note: string; idempotencyKey: string }
   | { type: "OPEN_CONNECTIONS" };
 
@@ -119,6 +120,9 @@ async function handleMessage(message: RequestMessage, sender: chrome.runtime.Mes
   if (message.type === "CONNECT") return connect(message.deviceName, sender.tab?.id);
   if (message.type === "GET_PROBLEM") {
     return apiFetch(`/api/extension/problems/${encodeURIComponent(message.titleSlug)}`, {}, true);
+  }
+  if (message.type === "GET_TODAY_PLAN") {
+    return apiFetch("/api/extension/study-plan/today", {}, true);
   }
   if (message.type === "SUBMIT_REVIEW") return retryReview(message);
   if (message.type === "OPEN_CONNECTIONS") {

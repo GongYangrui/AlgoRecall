@@ -97,6 +97,7 @@ Depth is mostly tonal and structural. First-party pages use daisyUI's low elevat
 - **Connection list:** simple list rows with device metadata and one explicit revoke action, not a grid of cards.
 - **Extension trigger:** a compact pill with status dot and AlgoRecall label; it expands into a single 320px panel.
 - **Extension panel:** one surface, no nested cards. Result choices form a readable two-column action group, followed by an optional note field.
+- **Extension study flow:** use compact Record and Today tabs. Keep the current problem's memory rail in Record, and present today's due problems as navigable list rows rather than nested cards.
 
 ## Do's and Don'ts
 

@@ -1,4 +1,13 @@
-import type { LeetcodeQuestion, Problem } from "./types";
+import type { LeetcodeQuestion, Problem, ReviewResult } from "./types";
+
+export type ReviewResultTone = "primary" | "error" | "info" | "success";
+
+const REVIEW_RESULT_PRESENTATION: Record<ReviewResult, { label: string; tone: ReviewResultTone; buttonClass: string }> = {
+  easy: { label: "顺利做出", tone: "primary", buttonClass: "btn-primary" },
+  hard: { label: "卡住了", tone: "error", buttonClass: "btn-error" },
+  solution: { label: "看了题解", tone: "info", buttonClass: "btn-info" },
+  mastered: { label: "已掌握", tone: "success", buttonClass: "btn-success" },
+};
 
 export function parseTags(value: string[] | string | null | undefined): string[] {
   if (!value) return [];
@@ -53,13 +62,15 @@ export function statusLabel(status: string) {
 }
 
 export function resultLabel(result: string) {
-  const labels: Record<string, string> = {
-    easy: "顺利做出",
-    hard: "卡住了",
-    solution: "看了题解",
-    mastered: "已掌握",
-  };
-  return labels[result] ?? result;
+  return REVIEW_RESULT_PRESENTATION[result as ReviewResult]?.label ?? result;
+}
+
+export function reviewResultTone(result: ReviewResult) {
+  return REVIEW_RESULT_PRESENTATION[result].tone;
+}
+
+export function reviewResultButtonClass(result: ReviewResult) {
+  return REVIEW_RESULT_PRESENTATION[result].buttonClass;
 }
 
 export function matchesLeetcodeQuery(question: LeetcodeQuestion, q: string) {

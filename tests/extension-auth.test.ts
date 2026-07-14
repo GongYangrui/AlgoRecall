@@ -4,8 +4,10 @@ import {
   EXTENSION_PAIRING_TTL_MS,
   EXTENSION_TOKEN_PREFIX,
   EXTENSION_TOKEN_TTL_MS,
+  buildExtensionTodayProblems,
   resolveExtensionPairingClaimStatus,
 } from "../shared/extension";
+import type { Problem } from "../shared/types";
 import {
   createExtensionToken,
   createPairingSecret,
@@ -49,5 +51,56 @@ describe("extension expiry and pairing state", () => {
     expect(EXTENSION_PAIRING_TTL_MS).toBe(10 * 60 * 1000);
     expect(EXTENSION_PAIRING_POLL_INTERVAL_MS).toBe(5_000);
     expect(EXTENSION_TOKEN_TTL_MS).toBe(30 * 24 * 60 * 60 * 1000);
+  });
+});
+
+describe("extension today plan", () => {
+  const problem = (overrides: Partial<Problem> = {}): Problem => ({
+    id: "problem-1",
+    userId: "user-1",
+    title: "Two Sum",
+    titleCn: "两数之和",
+    titleSlug: "two-sum",
+    frontendId: "1",
+    tagsCn: "数组",
+    url: "https://leetcode.cn/problems/two-sum/",
+    urlEn: "https://leetcode.com/problems/two-sum/",
+    urlCn: "https://leetcode.cn/problems/two-sum/",
+    platform: "leetcode",
+    difficulty: "easy",
+    tags: "array",
+    status: "reviewing",
+    stage: 2,
+    lastResult: "easy",
+    wrongCount: 0,
+    nextReviewAt: "2026-07-14",
+    lastReviewedAt: null,
+    reviewCount: 3,
+    version: 1,
+    createdAt: "2026-07-01T00:00:00.000Z",
+    updatedAt: "2026-07-01T00:00:00.000Z",
+    ...overrides,
+  });
+
+  it("preserves queue order while exposing only navigable LeetCode fields", () => {
+    const result = buildExtensionTodayProblems([
+      problem({ id: "first", titleSlug: "two-sum" }),
+      problem({ id: "unsupported", titleSlug: null }),
+      problem({ id: "second", titleSlug: "3sum", frontendId: "15" }),
+    ]);
+
+    expect(result.map((item) => item.id)).toEqual(["first", "second"]);
+    expect(result[0]).toEqual({
+      id: "first",
+      title: "Two Sum",
+      titleCn: "两数之和",
+      titleSlug: "two-sum",
+      frontendId: "1",
+      difficulty: "easy",
+      status: "reviewing",
+      stage: 2,
+      nextReviewAt: "2026-07-14",
+      reviewCount: 3,
+    });
   });
 });

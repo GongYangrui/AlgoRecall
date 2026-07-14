@@ -45,6 +45,43 @@ export type ExtensionProblemResponse = {
   latestReview: Review | null;
 };
 
+export type ExtensionTodayProblem = Pick<
+  Problem,
+  | "id"
+  | "title"
+  | "titleCn"
+  | "titleSlug"
+  | "frontendId"
+  | "difficulty"
+  | "status"
+  | "stage"
+  | "nextReviewAt"
+  | "reviewCount"
+> & { titleSlug: string };
+
+export type ExtensionTodayStudyPlanResponse = {
+  today: string;
+  dueProblems: ExtensionTodayProblem[];
+};
+
+export function buildExtensionTodayProblems(problems: Problem[]): ExtensionTodayProblem[] {
+  return problems.flatMap((problem) => {
+    if (problem.platform !== "leetcode" || !problem.titleSlug) return [];
+    return [{
+      id: problem.id,
+      title: problem.title,
+      titleCn: problem.titleCn,
+      titleSlug: problem.titleSlug,
+      frontendId: problem.frontendId,
+      difficulty: problem.difficulty,
+      status: problem.status,
+      stage: problem.stage,
+      nextReviewAt: problem.nextReviewAt,
+      reviewCount: problem.reviewCount,
+    }];
+  });
+}
+
 export type ExtensionReviewRequest = {
   titleSlug: string;
   result: ReviewResult;

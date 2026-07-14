@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesLeetcodeQuery, parseTags } from "../shared/problems";
+import { matchesLeetcodeQuery, parseTags, resultLabel, reviewResultButtonClass, reviewResultTone } from "../shared/problems";
 import { problemDifficulties, problemStatuses, reviewResults, type LeetcodeQuestion } from "../shared/types";
 
 const question: LeetcodeQuestion = {
@@ -32,5 +32,14 @@ describe("problem helpers", () => {
     expect([...problemDifficulties]).toEqual(["easy", "medium", "hard"]);
     expect([...problemStatuses]).toEqual(["new", "learning", "reviewing", "mastered"]);
     expect([...reviewResults]).toEqual(["easy", "hard", "solution", "mastered"]);
+  });
+
+  it("keeps review labels and semantic colors aligned across clients", () => {
+    expect(reviewResults.map((result) => [resultLabel(result), reviewResultTone(result), reviewResultButtonClass(result)])).toEqual([
+      ["顺利做出", "primary", "btn-primary"],
+      ["卡住了", "error", "btn-error"],
+      ["看了题解", "info", "btn-info"],
+      ["已掌握", "success", "btn-success"],
+    ]);
   });
 });

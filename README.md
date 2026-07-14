@@ -14,6 +14,8 @@ npm run extension:build      # 连接 https://algorecall.rayspace.top
 
 扩展只在 `leetcode.cn/problems/*` 与 `leetcode.com/problems/*` 运行。它不读取网站 Cookie、LeetCode 编辑器或提交内容，连接令牌也不会暴露给题目页脚本。
 
+连接后可在题目页查看当前记忆阶段和今日待复习队列，记录复习结果，并按网页端队列顺序跳转到下一题。
+
 把刷过的算法题变成可持续复习节奏的个人题库。
 
 AlgoRecall 是一个面向算法学习者的复习系统：导入 LeetCode 题目，按记忆阶段安排下一次复习，记录每次卡住的原因，并用题单和统计面板帮你长期跟进薄弱点。

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ExternalLink, Loader2 } from "@lucide/vue";
-import { displayProblemNumber, displayProblemTags, displayProblemTitle, resultLabel } from "@shared/problems";
+import { displayProblemNumber, displayProblemTags, displayProblemTitle, resultLabel, reviewResultButtonClass } from "@shared/problems";
 import { REVIEW_NOTE_MAX_LENGTH } from "@shared/reviews";
 import { getToday } from "@shared/schedule";
 import type { Problem, ReviewResult, StudyListQueueResult, TodayStudyPlan } from "@shared/types";
@@ -118,15 +118,6 @@ function fullProblemTitle(problem: Problem) {
   return chineseTitle === problem.title ? chineseTitle : `${chineseTitle} / ${problem.title}`;
 }
 
-function reviewButtonClass(result: ReviewResult) {
-  const classes: Record<ReviewResult, string> = {
-    easy: "btn-primary",
-    hard: "btn-error",
-    solution: "btn-info",
-    mastered: "btn-success",
-  };
-  return classes[result];
-}
 </script>
 
 <template>
@@ -325,7 +316,7 @@ function reviewButtonClass(result: ReviewResult) {
                     v-for="result in reviewResults"
                     :key="result"
                     class="btn btn-soft transition duration-150 ease-out active:scale-[0.98]"
-                    :class="reviewButtonClass(result)"
+                    :class="reviewResultButtonClass(result)"
                     type="button"
                     :disabled="Boolean(submitting)"
                     @click="submitReview(currentProblem, result)"

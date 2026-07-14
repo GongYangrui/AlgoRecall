@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ExternalLink, Loader2, Trash2 } from "@lucide/vue";
 import { renderReviewMarkdown } from "@shared/markdown";
-import { displayProblemNumber, displayProblemTags, displayProblemTitle, resultLabel } from "@shared/problems";
+import { displayProblemNumber, displayProblemTags, displayProblemTitle, resultLabel, reviewResultButtonClass } from "@shared/problems";
 import { REVIEW_NOTE_MAX_LENGTH } from "@shared/reviews";
 import type { Problem, Review, ReviewResult } from "@shared/types";
 
@@ -27,16 +27,6 @@ const notedReviews = computed(() => data.value?.history.filter((review) => revie
 
 function shouldShowEnglishTitle(problem: Problem) {
   return displayProblemTitle(problem) !== problem.title;
-}
-
-function reviewButtonClass(result: ReviewResult) {
-  const classes: Record<ReviewResult, string> = {
-    easy: "btn-primary",
-    hard: "btn-error",
-    solution: "btn-info",
-    mastered: "btn-success",
-  };
-  return classes[result];
 }
 
 function reviewNotePlaceholder(result: ReviewResult | null) {
@@ -265,7 +255,7 @@ async function deleteProblem() {
                 v-for="result in reviewResults"
                 :key="result"
                 class="btn btn-soft transition duration-150 ease-out active:scale-[0.98]"
-                :class="reviewButtonClass(result)"
+                :class="reviewResultButtonClass(result)"
                 type="button"
                 :disabled="Boolean(reviewing)"
                 @click="submitReview(result)"
