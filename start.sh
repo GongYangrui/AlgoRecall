@@ -206,6 +206,12 @@ run_migrations() {
   green "Migrations applied"
 }
 
+sync_leetcode_index() {
+  info "Synchronizing the LeetCode question index..."
+  $COMPOSE run --rm --no-deps "$APP_SERVICE" node scripts/sync-leetcode-index.mjs
+  green "LeetCode question index synchronized"
+}
+
 validate_production_env() {
   local failed=0
 
@@ -250,6 +256,7 @@ cmd_up() {
   wait_for_service_healthy redis 90
 
   run_migrations
+  sync_leetcode_index
 
   info "Starting app service..."
   $COMPOSE up -d "$APP_SERVICE"
@@ -319,6 +326,15 @@ cmd_migrate() {
   run_migrations
 }
 
+cmd_sync_leetcode() {
+  check_prereqs
+  ensure_env
+  load_env
+  $COMPOSE up -d postgres
+  wait_for_service_healthy postgres 90
+  sync_leetcode_index
+}
+
 cmd_status() {
   $COMPOSE ps
 }
@@ -333,14 +349,15 @@ usage() {
 AlgoRecall one-click deployment script
 
 Usage:
-  ./start.sh up              Build image + start DB + run migrations + start app
-  ./start.sh deploy          Production build + migrations + restart using hardened Compose settings
+  ./start.sh up              Build image + migrate + sync index + start app
+  ./start.sh deploy          Production build + migration + index sync using hardened Compose settings
   ./start.sh down            Stop all services
   ./start.sh restart         Stop + rebuild + start
   ./start.sh logs [service]  Tail logs (default: app)
   ./start.sh admin <email>   Promote a user to admin
   ./start.sh cleanup [days]  Delete app_events and analytics_events older than N days (default: 30)
   ./start.sh migrate         Run DB migrations manually
+  ./start.sh sync-leetcode   Synchronize the PostgreSQL LeetCode question index
   ./start.sh status          Show container status
   ./start.sh shell           Open a shell inside the app container
 
@@ -350,6 +367,7 @@ Examples:
   ./start.sh admin me@example.com      # make yourself admin
   ./start.sh logs app                  # watch app logs
   ./start.sh cleanup 7                 # keep only 7 days of logs
+  ./start.sh sync-leetcode             # manually synchronize the question index
 EOF
 }
 
@@ -363,6 +381,7 @@ case "${1:-}" in
   admin)     cmd_admin "${2:-}" ;;
   cleanup)   cmd_cleanup "${2:-}" ;;
   migrate)   cmd_migrate ;;
+  sync-leetcode) cmd_sync_leetcode ;;
   status)    cmd_status ;;
   shell)     cmd_shell ;;
   -h|--help) usage ;;

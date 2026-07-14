@@ -7,6 +7,7 @@ import { db } from "../db";
 import { leetcodeQuestions } from "../db/schema";
 
 let cachedQuestions: LeetcodeQuestion[] | null = null;
+type LeetcodeQuestionLookupClient = Pick<typeof db, "select">;
 
 export async function loadLeetcodeQuestions() {
   if (!cachedQuestions) {
@@ -31,8 +32,8 @@ export function toLeetcodeQuestionSummary(question: LeetcodeQuestion) {
   };
 }
 
-export async function getLeetcodeQuestionBySlug(titleSlug: string) {
-  const [row] = await db
+export async function getLeetcodeQuestionBySlug(titleSlug: string, client: LeetcodeQuestionLookupClient = db) {
+  const [row] = await client
     .select()
     .from(leetcodeQuestions)
     .where(eq(leetcodeQuestions.titleSlug, titleSlug))

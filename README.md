@@ -59,6 +59,8 @@ cp .env.example .env
 ./start.sh deploy
 ```
 
+`up`、`deploy` 和 `restart` 会在应用启动前增量同步 PostgreSQL 题目索引；只有新增、变化或已删除的题目会写入数据库。
+
 默认访问地址是 `http://localhost:3000`。生产环境请把 `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`、`TRUSTED_ORIGINS`、PostgreSQL 和 Redis 连接信息换成真实配置。当前版本不发送邮件，注册后可直接登录，也不提供密码找回。
 
 ## Scripts
@@ -71,6 +73,8 @@ npm run build        # 生产构建
 npm run ci           # typecheck + test + build
 npm run extension:ci # 扩展类型检查 + 测试 + 正式构建
 npm run db:migrate   # 迁移前安全检查 + Drizzle 迁移
+npm run db:check-leetcode-source # 校验内置题库数据
+npm run db:sync-leetcode         # 同步 PostgreSQL 题目索引
 ```
 
 ## Deployment
@@ -84,4 +88,5 @@ npm run db:migrate   # 迁移前安全检查 + Drizzle 迁移
 ./start.sh admin you@example.com
 ./start.sh migrate
 ./start.sh cleanup 30
+./start.sh sync-leetcode
 ```

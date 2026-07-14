@@ -7,10 +7,11 @@ import { REVIEW_NOTE_MAX_LENGTH } from "@shared/reviews";
 import { getToday } from "@shared/schedule";
 import { reviewResults } from "@shared/types";
 import { db } from "../../db";
-import { leetcodeQuestions, problems } from "../../db/schema";
+import { problems } from "../../db/schema";
 import { trackAnalyticsEvent } from "../../utils/analytics";
 import { isPostgresUniqueViolation } from "../../utils/db-errors";
 import { requireExtensionToken } from "../../utils/extension-auth";
+import { getLeetcodeQuestionBySlug } from "../../utils/leetcode-index";
 import { setLogOperation } from "../../utils/log-context";
 import { assertRateLimit } from "../../utils/rate-limit";
 import { findIdempotentReview, recordReviewInTransaction } from "../../utils/review-service";
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event): Promise<ExtensionReviewResponse
     const idempotent = await findIdempotentReview(connection.userId, input.idempotencyKey, tx);
     if (idempotent) return { ...idempotent, createdProblem: false };
 
-    const [question] = await tx.select().from(leetcodeQuestions).where(eq(leetcodeQuestions.titleSlug, input.titleSlug)).limit(1);
+    const question = await getLeetcodeQuestionBySlug(input.titleSlug, tx);
     if (!question) {
       throw createError({ statusCode: 404, statusMessage: "Question is not indexed", data: { code: "QUESTION_NOT_INDEXED" } });
     }
@@ -53,13 +54,13 @@ export default defineEventHandler(async (event): Promise<ExtensionReviewResponse
         titleCn: question.titleCn,
         titleSlug: question.titleSlug,
         frontendId: question.questionFrontendId,
-        url: question.urlCn,
+        url: question.urlCn || question.urlEn,
         urlEn: question.urlEn,
         urlCn: question.urlCn,
         platform: "leetcode",
         difficulty: question.difficulty,
-        tags: question.tags,
-        tagsCn: question.tagsCn,
+        tags: Array.isArray(question.tags) ? question.tags.join(", ") : question.tags,
+        tagsCn: Array.isArray(question.tagsCn) ? question.tagsCn.join(", ") : question.tagsCn,
         status: "new",
         stage: 0,
         nextReviewAt: getToday(),
