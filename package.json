@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "extension"
+  ],
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
@@ -11,7 +14,12 @@
     "typecheck": "nuxt typecheck",
     "test": "nuxt prepare && vitest run",
     "test:watch": "vitest",
-    "ci": "npm run typecheck && npm run test && npm run build",
+    "ci": "npm run typecheck && npm run test && npm run build && npm run extension:ci",
+    "extension:build": "npm run build --workspace extension",
+    "extension:build:dev": "npm run build:dev --workspace extension",
+    "extension:typecheck": "npm run typecheck --workspace extension",
+    "extension:test": "npm run test --workspace extension",
+    "extension:ci": "npm run extension:typecheck && npm run extension:test && npm run extension:build",
     "db:check-safe": "node scripts/check-migrations-safe.mjs",
     "import:leetcode": "node scripts/import-leetcode.mjs",
     "sync:study-lists": "node scripts/sync-study-lists.mjs",

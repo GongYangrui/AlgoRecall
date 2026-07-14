@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { Loader2 } from "@lucide/vue";
 import { authClient } from "../utils/auth-client";
+import { safeInternalRedirect } from "../utils/safe-redirect";
+
+const route = useRoute();
+const redirectTo = computed(() => safeInternalRedirect(route.query.redirect));
+const signupTarget = computed(() => ({ path: "/signup", query: redirectTo.value === "/app" ? {} : { redirect: redirectTo.value } }));
 
 const email = ref("");
 const password = ref("");
@@ -61,7 +66,7 @@ async function submit() {
       error.value = getLoginErrorMessage(result.error);
       return;
     }
-    await navigateTo("/app");
+    await navigateTo(redirectTo.value);
   } finally {
     loading.value = false;
   }
@@ -117,7 +122,7 @@ async function submit() {
 
           <p class="text-center text-sm text-base-content/60">
             还没有账号？
-            <NuxtLink to="/signup" class="link link-primary font-semibold">注册</NuxtLink>
+            <NuxtLink :to="signupTarget" class="link link-primary font-semibold">注册</NuxtLink>
           </p>
         </fieldset>
       </form>

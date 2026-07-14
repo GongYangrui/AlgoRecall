@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-14T00:00:00.000Z",
+  "title": "Design System: AlgoRecall",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Study Paper", "canonical": "#fcfcf7", "tonalRamp": ["#24251f", "#45473e", "#686b5e", "#8f9283", "#b6b9aa", "#d6d8cc", "#eeeee7", "#fcfcf7"] },
+      "ink": { "role": "neutral", "displayName": "Quiet Ink", "canonical": "#12212c", "tonalRamp": ["#081016", "#12212c", "#2d3b45", "#52606a", "#7a8790", "#a7b0b6", "#d1d7da", "#f2f5f6"] },
+      "teal": { "role": "primary", "displayName": "Recall Teal", "canonical": "#078c8c", "tonalRamp": ["#042525", "#064343", "#076464", "#078c8c", "#36aaaa", "#75c7c7", "#b5e1e1", "#e9f8f8"] },
+      "amber": { "role": "accent", "displayName": "Study Amber", "canonical": "#c48a18", "tonalRamp": ["#2d2006", "#583d0b", "#865d10", "#b47c16", "#cfa245", "#dfbf7e", "#eddcb5", "#faf4e6"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Compact Title", "purpose": "Panel and page section headings." },
+      "body": { "displayName": "Study Body", "purpose": "Instructions, notes, and state descriptions." },
+      "label": { "displayName": "Action Label", "purpose": "Buttons, metadata, and compact controls." }
+    },
+    "shadows": [
+      { "name": "floating-panel", "value": "0 18px 48px rgb(18 33 44 / 0.18)", "purpose": "Separate the injected panel from the LeetCode workspace." }
+    ],
+    "motion": [
+      { "name": "state-change", "value": "180ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Compact reveal and feedback transitions." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "480px" },
+      { "name": "desktop", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single primary action in a panel state.",
+      "html": "<button class=\"ds-btn-primary\">记录复习</button>",
+      "css": ".ds-btn-primary{border:0;border-radius:.55rem;background:#078c8c;color:#fcfcf7;padding:10px 14px;font:700 .875rem/1.2 Inter,system-ui,sans-serif;transition:background 180ms,transform 180ms}.ds-btn-primary:hover{background:#077777}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:2px solid #078c8c;outline-offset:2px}"
+    },
+    {
+      "name": "Review Note",
+      "kind": "input",
+      "description": "Optional short reflection capped at 500 characters.",
+      "html": "<textarea class=\"ds-note\" placeholder=\"记录这次刷题的收获\"></textarea>",
+      "css": ".ds-note{width:100%;min-height:84px;border:1px solid #e5e7da;border-radius:.55rem;background:#fcfcf7;color:#12212c;padding:10px 12px;font:400 .875rem/1.5 Inter,system-ui,sans-serif;resize:vertical}.ds-note:focus-visible{outline:2px solid #078c8c;outline-offset:1px}"
+    },
+    {
+      "name": "Extension Trigger",
+      "kind": "custom",
+      "description": "A quiet status-bearing entry point on LeetCode.",
+      "html": "<button class=\"ds-trigger\"><span class=\"ds-dot\"></span>AlgoRecall</button>",
+      "css": ".ds-trigger{display:inline-flex;align-items:center;gap:8px;border:1px solid #e5e7da;border-radius:999px;background:#fcfcf7;color:#12212c;padding:10px 13px;font:700 .8125rem/1 Inter,system-ui,sans-serif;box-shadow:0 8px 24px rgb(18 33 44/.12)}.ds-dot{width:8px;height:8px;border-radius:50%;background:#078c8c}.ds-trigger:focus-visible{outline:2px solid #078c8c;outline-offset:2px}"
+    },
+    {
+      "name": "Floating Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "One un-nested surface for connection and review states.",
+      "html": "<section class=\"ds-panel\"><h2>记录本次复习</h2><p>选择最符合这次完成情况的结果。</p></section>",
+      "css": ".ds-panel{width:320px;border:1px solid #e5e7da;border-radius:.8rem;background:#fcfcf7;color:#12212c;padding:16px;box-shadow:0 18px 48px rgb(18 33 44/.18);font-family:Inter,system-ui,sans-serif}.ds-panel h2{margin:0;font-size:1.25rem;line-height:1.2}.ds-panel p{margin:8px 0 0;color:rgb(18 33 44/.68);font-size:.875rem;line-height:1.5}"
+    },
+    {
+      "name": "Connection Row",
+      "kind": "list",
+      "description": "Compact device metadata with one revoke action.",
+      "html": "<div class=\"ds-connection\"><div><strong>Chrome 扩展</strong><small>30 天后到期</small></div><button>撤销</button></div>",
+      "css": ".ds-connection{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e5e7da;padding:12px 0;color:#12212c;font-family:Inter,system-ui,sans-serif}.ds-connection small{display:block;margin-top:4px;color:rgb(18 33 44/.58)}.ds-connection button{border:0;background:transparent;color:#d9544d;font-weight:700}.ds-connection button:focus-visible{outline:2px solid #078c8c;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Study Margin",
+    "overview": "A compact, paper-like product surface that stays beside the learner's work without competing with it.",
+    "keyCharacteristics": ["restrained teal emphasis", "compact state clarity", "paper-like neutrals", "host-page respect"],
+    "rules": [
+      { "name": "One Surface", "body": "The injected panel does not contain nested cards.", "section": "elevation" },
+      { "name": "State Before Decoration", "body": "Every color or motion choice must communicate state.", "section": "colors" }
+    ],
+    "dos": ["Do use semantic state labels and visible focus.", "Do keep the trigger compact and reversible."],
+    "donts": ["Don't use neon accents, gradients, or glass-heavy panels.", "Don't obscure LeetCode's editor or problem content."]
+  }
+}

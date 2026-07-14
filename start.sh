@@ -206,6 +206,32 @@ run_migrations() {
   green "Migrations applied"
 }
 
+validate_production_env() {
+  local failed=0
+
+  if [[ "${BETTER_AUTH_URL:-}" != https://* ]]; then
+    red "BETTER_AUTH_URL must be an https:// URL for production."
+    failed=1
+  fi
+  if [[ "${TRUSTED_ORIGINS:-}" != *"${BETTER_AUTH_URL:-__missing__}"* ]]; then
+    red "TRUSTED_ORIGINS must include BETTER_AUTH_URL."
+    failed=1
+  fi
+  if [ "${#BETTER_AUTH_SECRET}" -lt 32 ] || [ "${BETTER_AUTH_SECRET:-}" = "your-secret-key-change-in-production" ]; then
+    red "BETTER_AUTH_SECRET must be a real secret with at least 32 characters."
+    failed=1
+  fi
+  if [ "${POSTGRES_PASSWORD:-}" = "postgres" ] || [ -z "${POSTGRES_PASSWORD:-}" ]; then
+    red "POSTGRES_PASSWORD must not use the default production password."
+    failed=1
+  fi
+
+  if [ "$failed" -ne 0 ]; then
+    red "Production environment validation failed. Update .env and retry."
+    exit 1
+  fi
+}
+
 # ── commands ─────────────────────────────────────────────
 cmd_up() {
   check_prereqs
@@ -238,6 +264,15 @@ cmd_up() {
   echo "  Admin:     $APP_URL/admin"
   echo "  Logs:      docker compose logs -f app"
   echo ""
+}
+
+cmd_deploy() {
+  COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+  check_prereqs
+  ensure_env
+  load_env
+  validate_production_env
+  cmd_up
 }
 
 cmd_down() {
@@ -299,6 +334,7 @@ AlgoRecall one-click deployment script
 
 Usage:
   ./start.sh up              Build image + start DB + run migrations + start app
+  ./start.sh deploy          Production build + migrations + restart using hardened Compose settings
   ./start.sh down            Stop all services
   ./start.sh restart         Stop + rebuild + start
   ./start.sh logs [service]  Tail logs (default: app)
@@ -310,6 +346,7 @@ Usage:
 
 Examples:
   ./start.sh up                        # first deploy or update deploy
+  ./start.sh deploy                    # production server deploy
   ./start.sh admin me@example.com      # make yourself admin
   ./start.sh logs app                  # watch app logs
   ./start.sh cleanup 7                 # keep only 7 days of logs
@@ -318,6 +355,7 @@ EOF
 
 # ── main ──────────────────────────────────────────────────
 case "${1:-}" in
+  deploy)  cmd_deploy ;;
   up)        cmd_up ;;
   down)      cmd_down ;;
   restart)   cmd_restart ;;

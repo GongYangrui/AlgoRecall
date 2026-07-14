@@ -1,5 +1,19 @@
 # AlgoRecall
 
+## Chrome 扩展（开发者模式）
+
+扩展源码位于 `extension/`，与网站共用仓库但独立构建：
+
+```bash
+npm install
+npm run extension:build:dev  # 连接 http://localhost:3000
+npm run extension:build      # 连接 https://algorecall.rayspace.top
+```
+
+在 Chrome 打开 `chrome://extensions`，启用“开发者模式”，选择“加载已解压的扩展程序”，然后选择 `extension/dist/`。开发版和生产版会分别生成只允许对应 AlgoRecall 地址的最小权限清单。
+
+扩展只在 `leetcode.cn/problems/*` 与 `leetcode.com/problems/*` 运行。它不读取网站 Cookie、LeetCode 编辑器或提交内容，连接令牌也不会暴露给题目页脚本。
+
 把刷过的算法题变成可持续复习节奏的个人题库。
 
 AlgoRecall 是一个面向算法学习者的复习系统：导入 LeetCode 题目，按记忆阶段安排下一次复习，记录每次卡住的原因，并用题单和统计面板帮你长期跟进薄弱点。
@@ -39,6 +53,12 @@ cp .env.example .env
 ./start.sh up
 ```
 
+正式服务器部署使用生产安全配置，并自动完成镜像构建、数据库迁移、服务启动和健康检查：
+
+```bash
+./start.sh deploy
+```
+
 默认访问地址是 `http://localhost:3000`。生产环境请把 `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`、`TRUSTED_ORIGINS`、PostgreSQL 和 Redis 连接信息换成真实配置。当前版本不发送邮件，注册后可直接登录，也不提供密码找回。
 
 ## Scripts
@@ -49,6 +69,7 @@ npm run typecheck    # Nuxt + TypeScript 检查
 npm run test         # Vitest
 npm run build        # 生产构建
 npm run ci           # typecheck + test + build
+npm run extension:ci # 扩展类型检查 + 测试 + 正式构建
 npm run db:migrate   # 迁移前安全检查 + Drizzle 迁移
 ```
 
@@ -58,6 +79,7 @@ npm run db:migrate   # 迁移前安全检查 + Drizzle 迁移
 
 ```bash
 ./start.sh up
+./start.sh deploy
 ./start.sh logs app
 ./start.sh admin you@example.com
 ./start.sh migrate

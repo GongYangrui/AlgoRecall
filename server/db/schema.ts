@@ -213,6 +213,51 @@ export const analyticsEvents = pgTable(
   ],
 );
 
+export const extensionPairings = pgTable(
+  "extension_pairings",
+  {
+    id: text("id").primaryKey(),
+    secretHash: text("secret_hash").notNull(),
+    userCode: text("user_code").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    deviceName: text("device_name").notNull(),
+    status: text("status").notNull().default("pending"),
+    expiresAt: timestampString("expires_at").notNull(),
+    decidedAt: timestampString("decided_at"),
+    consumedAt: timestampString("consumed_at"),
+    createdAt: timestampString("created_at").notNull(),
+    updatedAt: timestampString("updated_at").notNull(),
+  },
+  (table) => [
+    check("chk_extension_pairings_status", sql`${table.status} IN ('pending', 'approved', 'denied', 'consumed')`),
+    uniqueIndex("uq_extension_pairings_user_code").on(table.userCode),
+    index("idx_extension_pairings_expires_at").on(table.expiresAt),
+    index("idx_extension_pairings_user_id").on(table.userId),
+  ],
+);
+
+export const extensionConnections = pgTable(
+  "extension_connections",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    deviceName: text("device_name").notNull(),
+    expiresAt: timestampString("expires_at").notNull(),
+    lastUsedAt: timestampString("last_used_at"),
+    revokedAt: timestampString("revoked_at"),
+    createdAt: timestampString("created_at").notNull(),
+    updatedAt: timestampString("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_extension_connections_token_hash").on(table.tokenHash),
+    index("idx_extension_connections_user_created").on(table.userId, table.createdAt),
+    index("idx_extension_connections_expires_at").on(table.expiresAt),
+  ],
+);
+
 export type ProblemRow = typeof problems.$inferSelect;
 export type NewProblemRow = typeof problems.$inferInsert;
 export type ReviewRow = typeof reviews.$inferSelect;
@@ -226,3 +271,5 @@ export type AppEventRow = typeof appEvents.$inferSelect;
 export type NewAppEventRow = typeof appEvents.$inferInsert;
 export type AnalyticsEventRow = typeof analyticsEvents.$inferSelect;
 export type NewAnalyticsEventRow = typeof analyticsEvents.$inferInsert;
+export type ExtensionPairingRow = typeof extensionPairings.$inferSelect;
+export type ExtensionConnectionRow = typeof extensionConnections.$inferSelect;

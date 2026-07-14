@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, BookOpen, CalendarCheck, Import, ListChecks, LogOut, Menu } from "@lucide/vue";
+import { BarChart3, BookOpen, CalendarCheck, Import, ListChecks, LogOut, Menu, PlugZap } from "@lucide/vue";
 import { authClient } from "../utils/auth-client";
 import { getAvatarInitial, normalizeNickname, shouldShowNavNickname } from "../utils/user-display";
 
@@ -94,6 +94,12 @@ function openImportModal() {
             </p>
           </div>
           <ul class="menu p-2">
+            <li>
+              <NuxtLink to="/settings/extensions">
+                <PlugZap class="h-4 w-4" />
+                浏览器扩展
+              </NuxtLink>
+            </li>
             <li>
               <button type="button" @click="logout">
                 <LogOut class="h-4 w-4" />

@@ -18,8 +18,10 @@ The app container remains available on the server at `127.0.0.1:3000`.
 From the project directory on the server:
 
 ```bash
-docker compose up -d --build
+./start.sh deploy
 ```
+
+该命令会同时加载 `docker-compose.yml` 与 `docker-compose.prod.yml`，构建最新镜像、等待 PostgreSQL 和 Redis、执行数据库迁移、启动应用并完成健康检查。
 
 This project binds the app port as `127.0.0.1:3000:3000`, so public traffic must go through Nginx.
 
@@ -101,7 +103,7 @@ BETTER_AUTH_URL=https://your-domain.com
 Restart the app after changing `.env`:
 
 ```bash
-docker compose up -d --build
+./start.sh deploy
 ```
 
 ## 6. Enable HTTPS

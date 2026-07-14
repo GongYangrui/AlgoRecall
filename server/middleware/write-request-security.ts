@@ -4,6 +4,12 @@ import { trustedOrigins } from "../utils/env";
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const MAX_BODY_BYTES = 1024 * 1024;
 
+function isExtensionMachineEndpoint(pathname: string) {
+  return pathname === "/api/extension/pairings"
+    || /^\/api\/extension\/pairings\/[^/]+\/token$/.test(pathname)
+    || pathname === "/api/extension/reviews";
+}
+
 function reject(statusCode: number, statusMessage: string, code: string) {
   throw createError({ statusCode, statusMessage, data: { code } });
 }
@@ -21,6 +27,8 @@ export default defineEventHandler((event: H3Event) => {
   if (!contentType.startsWith("application/json")) {
     reject(415, "application/json is required", "UNSUPPORTED_MEDIA_TYPE");
   }
+
+  if (isExtensionMachineEndpoint(getRequestURL(event).pathname)) return;
 
   const fetchSite = getHeader(event, "sec-fetch-site")?.toLowerCase();
   if (fetchSite === "cross-site") reject(403, "Cross-site request rejected", "CROSS_SITE_REQUEST");
