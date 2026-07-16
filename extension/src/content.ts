@@ -8,6 +8,15 @@ import { difficultyLabel, resultLabel, reviewResultTone, statusLabel } from "../
 import { REVIEW_NOTE_MAX_LENGTH } from "../../shared/reviews";
 import { REVIEW_INTERVALS } from "../../shared/schedule";
 import type { ReviewResult } from "../../shared/types";
+import {
+  clampPanelPosition,
+  nearestPanelEdge,
+  snapPanelPosition,
+  type PanelPosition,
+  type PanelSize,
+  type PanelSnapEdge,
+  type ViewportSize,
+} from "./panel-position";
 import { formatProblemTitle } from "./presentation";
 import { buildLeetcodeProblemUrl, getLeetcodeSiteLabel, parseLeetcodeTitleSlug, selectNextDueProblem } from "./url";
 
@@ -18,13 +27,15 @@ type PanelView = "record" | "today";
 
 const HOST_ID = "algorecall-extension-root";
 const RESULT_OPTIONS: ReviewResult[] = ["easy", "hard", "solution", "mastered"];
+const DRAG_THRESHOLD_PX = 5;
+const DEFAULT_PANEL_OFFSET_PX = 20;
 
 const styles = `
 :host{all:initial;color-scheme:light;--ar-bg:#fcfcf7;--ar-subtle:#f4f5ec;--ar-border:#e5e7da;--ar-text:#12212c;--ar-muted:#647078;--ar-primary:#078c8c;--ar-primary-ink:#fcfcf7;--ar-info:#4f8fa8;--ar-info-ink:#071b24;--ar-success:#3fae68;--ar-success-ink:#071b10;--ar-warning:#d79b12;--ar-error:#d9544d;--ar-error-ink:#fcfcf7;--ar-shadow:0 18px 48px rgb(18 33 44 / .18);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 :host([data-theme="dark"]){color-scheme:dark;--ar-bg:#172129;--ar-subtle:#202d36;--ar-border:#33434d;--ar-text:#f4f6f1;--ar-muted:#a5b0b7;--ar-primary:#31b8b2;--ar-primary-ink:#071b1b;--ar-info:#73b4cc;--ar-info-ink:#071b24;--ar-success:#5bd58b;--ar-success-ink:#071b10;--ar-warning:#efb847;--ar-error:#ff7b72;--ar-error-ink:#24100e;--ar-shadow:0 18px 58px rgb(0 0 0 / .5)}
-*{box-sizing:border-box}.ar-panel{position:fixed;right:20px;bottom:20px;z-index:2147483000;width:320px;color:var(--ar-text);font-size:14px;line-height:1.45}.ar-card{overflow:hidden;border:1px solid var(--ar-border);border-radius:13px;background:var(--ar-bg);box-shadow:var(--ar-shadow)}
-button,textarea{font:inherit}.ar-trigger{display:flex;margin-left:auto;align-items:center;gap:9px;min-height:44px;padding:0 15px;border:1px solid var(--ar-border);border-radius:999px;background:var(--ar-bg);color:var(--ar-text);box-shadow:var(--ar-shadow);font-weight:750;cursor:pointer}.ar-trigger:hover{border-color:var(--ar-primary)}.ar-dot{width:8px;height:8px;border-radius:99px;background:var(--ar-primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--ar-primary) 16%,transparent)}
-.ar-header{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--ar-border)}.ar-mark{display:grid;width:31px;height:31px;place-items:center;border-radius:9px;background:var(--ar-primary);color:var(--ar-primary-ink);font-weight:900}.ar-heading{min-width:0;flex:1}.ar-brand{font-size:13px;font-weight:850;letter-spacing:.01em}.ar-title{overflow:hidden;min-width:0;margin-top:2px;color:var(--ar-muted);font-size:12px;font-weight:650;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}.ar-icon-btn{display:grid;width:32px;height:32px;place-items:center;border:0;border-radius:8px;background:transparent;color:var(--ar-muted);cursor:pointer}.ar-icon-btn:hover{background:var(--ar-subtle);color:var(--ar-text)}
+*{box-sizing:border-box}.ar-panel{position:fixed;right:20px;bottom:20px;z-index:2147483000;width:320px;color:var(--ar-text);font-size:14px;line-height:1.45}.ar-panel.is-collapsed{width:max-content;max-width:calc(100vw - 20px)}.ar-panel.dragging,.ar-panel.dragging *{cursor:grabbing!important;user-select:none}.ar-card{overflow:hidden;border:1px solid var(--ar-border);border-radius:13px;background:var(--ar-bg);box-shadow:var(--ar-shadow)}
+button,textarea{font:inherit}.ar-trigger{display:flex;align-items:center;gap:9px;min-height:44px;padding:0 15px;border:1px solid var(--ar-border);border-radius:999px;background:var(--ar-bg);color:var(--ar-text);box-shadow:var(--ar-shadow);font-weight:750;cursor:grab;touch-action:none;user-select:none}.ar-trigger:hover{border-color:var(--ar-primary)}.ar-dot{width:8px;height:8px;border-radius:99px;background:var(--ar-primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--ar-primary) 16%,transparent)}
+.ar-header{display:flex;align-items:center;gap:8px;padding:13px 14px;border-bottom:1px solid var(--ar-border)}.ar-drag-handle{display:grid;width:24px;height:32px;flex:0 0 24px;place-items:center;border:0;border-radius:7px;background:transparent;color:var(--ar-muted);font-size:16px;line-height:1;cursor:grab;touch-action:none;user-select:none}.ar-drag-handle:hover{background:var(--ar-subtle);color:var(--ar-text)}.ar-mark{display:grid;width:31px;height:31px;flex:0 0 31px;place-items:center;border-radius:9px;background:var(--ar-primary);color:var(--ar-primary-ink);font-weight:900}.ar-heading{min-width:0;flex:1}.ar-brand{font-size:13px;font-weight:850;letter-spacing:.01em}.ar-title{overflow:hidden;min-width:0;margin-top:2px;color:var(--ar-muted);font-size:12px;font-weight:650;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}.ar-icon-btn{display:grid;width:32px;height:32px;place-items:center;border:0;border-radius:8px;background:transparent;color:var(--ar-muted);cursor:pointer}.ar-icon-btn:hover{background:var(--ar-subtle);color:var(--ar-text)}
 .ar-body{padding:14px}.ar-tabs{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:13px;padding:3px;border-radius:10px;background:var(--ar-subtle)}.ar-tab{min-height:34px;border:0;border-radius:8px;background:transparent;color:var(--ar-muted);font-size:12px;font-weight:800;cursor:pointer}.ar-tab:hover{color:var(--ar-text)}.ar-tab[aria-selected="true"]{background:var(--ar-bg);color:var(--ar-text);box-shadow:0 1px 3px rgb(18 33 44 / .12)}
 .ar-kicker{margin:0 0 4px;color:var(--ar-primary);font-size:11px;font-weight:800;letter-spacing:.08em}.ar-h2{margin:0;font-size:18px;line-height:1.25;font-weight:850}.ar-copy{margin:7px 0 0;color:var(--ar-muted);font-size:13px;line-height:1.6}.ar-code{margin:13px 0;padding:10px;border:1px dashed var(--ar-border);border-radius:10px;background:var(--ar-subtle);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;font-weight:850;letter-spacing:.12em}.ar-actions{display:flex;gap:8px;margin-top:14px}.ar-btn{display:inline-flex;min-height:38px;flex:1;align-items:center;justify-content:center;gap:7px;padding:0 12px;border:1px solid var(--ar-border);border-radius:9px;background:var(--ar-bg);color:var(--ar-text);font-weight:750;cursor:pointer}.ar-btn:hover{border-color:var(--ar-primary)}.ar-btn:disabled{cursor:not-allowed;opacity:.55}.ar-btn-primary{border-color:var(--ar-primary);background:var(--ar-primary);color:var(--ar-primary-ink)}.ar-btn-ghost{border-color:transparent;background:var(--ar-subtle)}.ar-link-btn{display:block;width:100%;margin-top:10px;border:0;background:transparent;color:var(--ar-muted);font-size:11px;text-align:center;cursor:pointer}.ar-link-btn:hover{color:var(--ar-primary)}
 .ar-progress-summary{margin-bottom:14px;padding:11px 12px;border-radius:10px;background:var(--ar-subtle)}.ar-progress-heading,.ar-progress-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}.ar-progress-heading strong{font-size:12px}.ar-progress-heading span,.ar-progress-meta{color:var(--ar-muted);font-size:10px}.ar-track{display:flex;gap:4px;margin:9px 0 7px}.ar-track-segment{height:6px;flex:1;border-radius:99px;background:var(--ar-border)}.ar-track-segment.active{background:var(--ar-primary)}.ar-progress-empty{display:flex;align-items:center;gap:9px}.ar-progress-empty-mark{display:grid;width:28px;height:28px;flex:0 0 28px;place-items:center;border-radius:99px;background:color-mix(in srgb,var(--ar-primary) 13%,var(--ar-bg));color:var(--ar-primary);font-weight:900}.ar-progress-empty strong,.ar-progress-empty span{display:block}.ar-progress-empty strong{font-size:12px}.ar-progress-empty span{margin-top:2px;color:var(--ar-muted);font-size:10px}
@@ -33,7 +44,7 @@ button,textarea{font:inherit}.ar-trigger{display:flex;margin-left:auto;align-ite
 .ar-status{display:flex;gap:10px;padding:12px;border-radius:10px;background:var(--ar-subtle)}.ar-status-mark{display:grid;width:30px;height:30px;flex:0 0 30px;place-items:center;border-radius:99px;background:color-mix(in srgb,var(--ar-primary) 14%,var(--ar-bg));color:var(--ar-primary);font-weight:900}.ar-status.error .ar-status-mark{background:color-mix(in srgb,var(--ar-error) 14%,var(--ar-bg));color:var(--ar-error)}.ar-status.success .ar-status-mark{background:color-mix(in srgb,var(--ar-success) 14%,var(--ar-bg));color:var(--ar-success)}.ar-status strong{display:block;font-size:13px}.ar-status p{margin:3px 0 0;color:var(--ar-muted);font-size:12px}.ar-complete{margin-top:10px;color:var(--ar-success);font-size:12px;font-weight:750;text-align:center}.ar-meta{margin-top:12px;padding-top:10px;border-top:1px solid var(--ar-border);color:var(--ar-muted);font-size:11px}.ar-spinner{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:99px;animation:ar-spin .7s linear infinite}
 .ar-home-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}.ar-home-head .ar-kicker{margin-bottom:5px}.ar-home-queue{margin-top:14px;padding-top:12px;border-top:1px solid var(--ar-border)}.ar-home-queue .ar-queue{max-height:260px}
 .ar-queue-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.ar-queue-head strong{font-size:13px}.ar-queue-count,.ar-current-badge{border-radius:99px;background:color-mix(in srgb,var(--ar-primary) 11%,var(--ar-bg));color:var(--ar-primary);font-size:10px;font-weight:800}.ar-queue-count{padding:3px 7px}.ar-queue{max-height:356px;overflow:auto;margin:0 -4px;padding:0 4px;list-style:none}.ar-queue li+li{border-top:1px solid var(--ar-border)}.ar-queue-item{display:grid;width:100%;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 4px;border:0;background:transparent;color:var(--ar-text);text-align:left;cursor:pointer}.ar-queue-item:hover{color:var(--ar-primary)}.ar-queue-item.current{cursor:default}.ar-queue-title{display:grid;min-width:0;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}.ar-queue-title-text{overflow:hidden;min-width:0;font-size:12px;font-weight:750;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}.ar-number{flex:0 0 auto;color:var(--ar-muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:750}.ar-current-badge{flex:0 0 auto;padding:2px 6px}.ar-queue-meta{margin-top:4px;color:var(--ar-muted);font-size:10px}.ar-queue-stage{color:var(--ar-muted);font-size:10px;text-align:right;white-space:nowrap}.ar-queue-stage strong{display:block;color:var(--ar-text);font-size:11px}.ar-queue-footer{margin-top:10px;padding-top:9px;border-top:1px solid var(--ar-border)}
-button:focus-visible,textarea:focus-visible{outline:3px solid color-mix(in srgb,var(--ar-primary) 35%,transparent);outline-offset:2px}@keyframes ar-spin{to{transform:rotate(360deg)}}@media(max-width:460px){.ar-panel{right:10px;bottom:10px;width:min(320px,calc(100vw - 20px))}}@media(prefers-reduced-motion:reduce){.ar-spinner{animation-duration:1.5s}}
+button:focus-visible,textarea:focus-visible{outline:3px solid color-mix(in srgb,var(--ar-primary) 35%,transparent);outline-offset:2px}@keyframes ar-spin{to{transform:rotate(360deg)}}@media(max-width:460px){.ar-panel{right:10px;bottom:10px;width:min(320px,calc(100vw - 20px))}.ar-panel.is-collapsed{width:max-content;max-width:calc(100vw - 20px)}}@media(prefers-reduced-motion:reduce){.ar-spinner{animation-duration:1.5s}}
 `;
 
 function escapeHtml(value: unknown) {
@@ -70,6 +81,10 @@ class RecallPanel {
   private queueErrorMessage = "";
   private pairingCode = "";
   private idempotencyKey = crypto.randomUUID();
+  private panelPosition: PanelPosition | null = null;
+  private snappedEdge: PanelSnapEdge | null = null;
+  private suppressExpandClick = false;
+  private readonly handleViewportResize = () => this.applyPanelPosition();
 
   constructor(slug: string | null) {
     this.slug = slug;
@@ -77,6 +92,7 @@ class RecallPanel {
     this.host.id = HOST_ID;
     this.root = this.host.attachShadow({ mode: "closed" });
     document.documentElement.append(this.host);
+    addEventListener("resize", this.handleViewportResize);
     this.detectTheme();
     this.render();
     void this.load();
@@ -101,6 +117,110 @@ class RecallPanel {
       return;
     }
     await this.loadConnectedPage();
+  }
+
+  private panelMetrics(panel: HTMLElement): { position: PanelPosition; panel: PanelSize; viewport: ViewportSize } {
+    const rect = panel.getBoundingClientRect();
+    return {
+      position: {
+        right: window.innerWidth - rect.right,
+        bottom: window.innerHeight - rect.bottom,
+      },
+      panel: { width: rect.width, height: rect.height },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    };
+  }
+
+  private applyPanelPosition() {
+    const panel = this.root.querySelector<HTMLElement>(".ar-panel");
+    if (!panel || !this.panelPosition) return;
+    const metrics = this.panelMetrics(panel);
+    this.panelPosition = this.snappedEdge
+      ? snapPanelPosition(this.panelPosition, this.snappedEdge, metrics.panel, metrics.viewport)
+      : clampPanelPosition(this.panelPosition, metrics.panel, metrics.viewport);
+    panel.style.right = `${this.panelPosition.right}px`;
+    panel.style.bottom = `${this.panelPosition.bottom}px`;
+  }
+
+  private startDrag(event: PointerEvent, source: HTMLElement) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const panel = this.root.querySelector<HTMLElement>(".ar-panel");
+    if (!panel) return;
+
+    const metrics = this.panelMetrics(panel);
+    const startPosition = clampPanelPosition(metrics.position, metrics.panel, metrics.viewport);
+    const startEdge = this.snappedEdge;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let moved = false;
+
+    source.setPointerCapture(event.pointerId);
+
+    const move = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      if (!moved && Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD_PX) return;
+      if (!moved) {
+        moved = true;
+        this.snappedEdge = null;
+        panel.classList.add("dragging");
+      }
+      moveEvent.preventDefault();
+      this.panelPosition = clampPanelPosition({
+        right: startPosition.right - deltaX,
+        bottom: startPosition.bottom - deltaY,
+      }, metrics.panel, metrics.viewport);
+      panel.style.right = `${this.panelPosition.right}px`;
+      panel.style.bottom = `${this.panelPosition.bottom}px`;
+    };
+
+    const cleanup = () => {
+      source.removeEventListener("pointermove", move);
+      source.removeEventListener("pointerup", finish);
+      source.removeEventListener("pointercancel", cancel);
+      panel.classList.remove("dragging");
+      if (source.hasPointerCapture(event.pointerId)) source.releasePointerCapture(event.pointerId);
+    };
+
+    const finish = (endEvent: PointerEvent) => {
+      cleanup();
+      if (!moved || !this.panelPosition) return;
+      endEvent.preventDefault();
+      this.snappedEdge = nearestPanelEdge(this.panelPosition, metrics.panel, metrics.viewport);
+      this.panelPosition = snapPanelPosition(this.panelPosition, this.snappedEdge, metrics.panel, metrics.viewport);
+      this.applyPanelPosition();
+      if (source.dataset.action === "expand") {
+        this.suppressExpandClick = true;
+        setTimeout(() => { this.suppressExpandClick = false; }, 0);
+      }
+    };
+
+    const cancel = () => {
+      cleanup();
+      if (!moved) return;
+      this.panelPosition = startPosition;
+      this.snappedEdge = startEdge;
+      this.applyPanelPosition();
+    };
+
+    source.addEventListener("pointermove", move);
+    source.addEventListener("pointerup", finish);
+    source.addEventListener("pointercancel", cancel);
+  }
+
+  private snapToEdge(edge: PanelSnapEdge) {
+    const panel = this.root.querySelector<HTMLElement>(".ar-panel");
+    if (!panel) return;
+    const metrics = this.panelMetrics(panel);
+    this.panelPosition = snapPanelPosition(metrics.position, edge, metrics.panel, metrics.viewport);
+    this.snappedEdge = edge;
+    this.applyPanelPosition();
+  }
+
+  private resetPanelPosition() {
+    this.panelPosition = { right: DEFAULT_PANEL_OFFSET_PX, bottom: DEFAULT_PANEL_OFFSET_PX };
+    this.snappedEdge = "right";
+    this.applyPanelPosition();
   }
 
   private detectTheme() {
@@ -321,15 +441,40 @@ class RecallPanel {
   }
 
   private render() {
-    this.root.innerHTML = `<style>${styles}</style><aside class="ar-panel" aria-label="AlgoRecall 复习记录">${this.collapsed
-      ? `<button class="ar-trigger" data-action="expand"><span class="ar-dot"></span>AlgoRecall</button>`
-      : `<section class="ar-card"><header class="ar-header"><span class="ar-mark">A</span><div class="ar-heading"><div class="ar-brand">AlgoRecall</div>${this.title()}</div><button class="ar-icon-btn" data-action="collapse" aria-label="收起">−</button></header><div class="ar-body" aria-live="polite">${this.body()}</div></section>`}</aside>`;
+    this.root.innerHTML = `<style>${styles}</style><aside class="ar-panel${this.collapsed ? " is-collapsed" : ""}" aria-label="AlgoRecall 复习记录">${this.collapsed
+      ? `<button class="ar-trigger" data-action="expand" data-drag aria-label="展开或拖动 AlgoRecall"><span class="ar-dot"></span>AlgoRecall</button>`
+      : `<section class="ar-card"><header class="ar-header"><button class="ar-drag-handle" data-drag data-drag-keyboard aria-label="拖动面板，方向键吸附边缘，Home 恢复右下角" title="拖动面板"><span aria-hidden="true">⠿</span></button><span class="ar-mark">A</span><div class="ar-heading"><div class="ar-brand">AlgoRecall</div>${this.title()}</div><button class="ar-icon-btn" data-action="collapse" aria-label="收起">−</button></header><div class="ar-body" aria-live="polite">${this.body()}</div></section>`}</aside>`;
+    this.applyPanelPosition();
     this.bind();
   }
 
   private bind() {
-    this.root.querySelector<HTMLElement>("[data-action='expand']")?.addEventListener("click", () => { this.collapsed = false; this.render(); });
+    this.root.querySelector<HTMLElement>("[data-action='expand']")?.addEventListener("click", (event) => {
+      if (this.suppressExpandClick) {
+        event.preventDefault();
+        return;
+      }
+      this.collapsed = false;
+      this.render();
+    });
     this.root.querySelector<HTMLElement>("[data-action='collapse']")?.addEventListener("click", () => { this.collapsed = true; this.render(); });
+    this.root.querySelectorAll<HTMLElement>("[data-drag]").forEach((source) => source.addEventListener("pointerdown", (event) => this.startDrag(event, source)));
+    this.root.querySelector<HTMLElement>("[data-drag-keyboard]")?.addEventListener("keydown", (event) => {
+      const edgeByKey: Partial<Record<string, PanelSnapEdge>> = {
+        ArrowLeft: "left",
+        ArrowRight: "right",
+        ArrowUp: "top",
+        ArrowDown: "bottom",
+      };
+      const edge = edgeByKey[event.key];
+      if (edge) {
+        event.preventDefault();
+        this.snapToEdge(edge);
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        this.resetPanelPosition();
+      }
+    });
     this.root.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => button.addEventListener("click", () => {
       this.activeView = button.dataset.view as PanelView;
       this.render();

@@ -95,7 +95,7 @@ Depth is mostly tonal and structural. First-party pages use daisyUI's low elevat
 - **Fields:** daisyUI `textarea` and standard labeled inputs, with persistent character count for review notes.
 - **Alerts:** daisyUI soft alerts for page-level errors and success; compact inline status text inside the extension.
 - **Connection list:** simple list rows with device metadata and one explicit revoke action, not a grid of cards.
-- **Extension trigger:** a compact pill with status dot and AlgoRecall label; it expands into a single 320px panel.
+- **Extension trigger:** a compact pill with status dot and AlgoRecall label; it expands into a single 320px panel. The collapsed trigger and expanded header handle can reposition the panel, snapping to the nearest viewport edge without persisting across reloads.
 - **Extension panel:** one surface, no nested cards. Result choices form a readable two-column action group, followed by an optional note field.
 - **Extension study flow:** use compact Record and Today tabs. Keep the current problem's memory rail in Record, and present today's due problems as navigable list rows rather than nested cards.
 - **Extension home:** outside problem pages, omit the Record tab and lead with one Start Review action followed by the same compact due-problem list. Navigation stays in the current tab and preserves the active LeetCode domain.
