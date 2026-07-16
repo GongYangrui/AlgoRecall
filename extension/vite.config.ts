@@ -7,14 +7,14 @@ export function createManifest(apiOrigin: string) {
   return {
     manifest_version: 3,
     name: "AlgoRecall for LeetCode",
-    description: "在 LeetCode 题目页直接记录 AlgoRecall 复习结果。",
+    description: "在 LeetCode 任意页面查看今日复习，并在题目页直接记录结果。",
     version: "0.1.0",
     permissions: ["storage"],
     host_permissions: [`${apiOrigin}/*`],
     background: { service_worker: "background.js", type: "module" },
     content_scripts: [
       {
-        matches: ["https://leetcode.cn/problems/*", "https://leetcode.com/problems/*"],
+        matches: ["https://leetcode.cn/*", "https://leetcode.com/*"],
         js: ["content.js"],
         run_at: "document_idle",
       },

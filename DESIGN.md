@@ -57,7 +57,7 @@ components:
 
 AlgoRecall should feel like a precise annotation written beside the learner's current work. The system is bright and paper-like, with compact information density, restrained teal emphasis, and warm amber reserved for caution or a moment that needs attention. It should never feel like another dashboard demanding attention.
 
-The extension panel inherits this language while remaining visually independent from LeetCode through Shadow DOM. It is collapsed at rest and becomes a focused recording tool only when invited.
+The extension panel inherits this language while remaining visually independent from LeetCode through Shadow DOM. It is collapsed at rest on every LeetCode page, opens to today's review queue outside problem pages, and becomes a focused recording tool on problem pages.
 
 ## Colors
 
@@ -98,6 +98,7 @@ Depth is mostly tonal and structural. First-party pages use daisyUI's low elevat
 - **Extension trigger:** a compact pill with status dot and AlgoRecall label; it expands into a single 320px panel.
 - **Extension panel:** one surface, no nested cards. Result choices form a readable two-column action group, followed by an optional note field.
 - **Extension study flow:** use compact Record and Today tabs. Keep the current problem's memory rail in Record, and present today's due problems as navigable list rows rather than nested cards.
+- **Extension home:** outside problem pages, omit the Record tab and lead with one Start Review action followed by the same compact due-problem list. Navigation stays in the current tab and preserves the active LeetCode domain.
 
 ## Do's and Don'ts
 

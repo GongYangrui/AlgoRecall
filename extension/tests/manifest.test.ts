@@ -8,8 +8,9 @@ describe("extension manifest", () => {
     expect(manifest.host_permissions).toEqual(["https://algorecall.rayspace.top/*"]);
     expect(JSON.stringify(manifest)).not.toContain("<all_urls>");
     expect(manifest.content_scripts[0]?.matches).toEqual([
-      "https://leetcode.cn/problems/*",
-      "https://leetcode.com/problems/*",
+      "https://leetcode.cn/*",
+      "https://leetcode.com/*",
     ]);
+    expect(manifest.description).toContain("任意页面");
   });
 });

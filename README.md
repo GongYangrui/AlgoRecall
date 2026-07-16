@@ -12,9 +12,9 @@ npm run extension:build      # 连接 https://algorecall.rayspace.top
 
 在 Chrome 打开 `chrome://extensions`，启用“开发者模式”，选择“加载已解压的扩展程序”，然后选择 `extension/dist/`。开发版和生产版会分别生成只允许对应 AlgoRecall 地址的最小权限清单。
 
-扩展只在 `leetcode.cn/problems/*` 与 `leetcode.com/problems/*` 运行。它不读取网站 Cookie、LeetCode 编辑器或提交内容，连接令牌也不会暴露给题目页脚本。
+扩展会在 `leetcode.cn/*` 与 `leetcode.com/*` 的所有 HTTPS 页面运行。它不读取网站 Cookie、LeetCode 编辑器或提交内容，连接令牌也不会暴露给页面脚本。
 
-连接后可在题目页查看当前记忆阶段和今日待复习队列，记录复习结果，并按网页端队列顺序跳转到下一题。
+连接后可在任意 LeetCode 页面打开今日复习首页并进入同站题目；在题目页还可查看当前记忆阶段、记录复习结果，并按网页端队列顺序跳转到下一题。
 
 把刷过的算法题变成可持续复习节奏的个人题库。
 
